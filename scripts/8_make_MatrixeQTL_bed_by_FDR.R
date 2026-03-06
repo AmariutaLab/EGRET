@@ -20,7 +20,8 @@ opt = parse_args(OptionParser(option_list=option_list))
 tissue = opt$tissue
 
 all_gene_info = fread(opt$gene_info, header = T)
-all_snp_info = fread(paste0("genotype_files/", opt$genotype_output_prefix ,".bim", header = F)
+all_snp_info = fread(paste0(opt$output_dir,"/genotype_files/", opt$genotype_output_prefix ,".bim"), header = F)
+
 
 gene_expression = fread(paste0(opt$output_dir,"/expression_files/",tissue,"_expression_regressed.txt.gz"),header = T)
 

@@ -18,6 +18,7 @@ if (is.na(opt$tissue)) {
 } else {
         tissue = opt$tissue
 }
+output_dir = opt$output_dir
 
 for (fold in 0:opt$folds) {
 

@@ -18,11 +18,11 @@ if (is.na(opt$tissue)) {
         tissue = opt$tissue
 }
 
-cis_predicted_expression = fread(paste0("GBAT/",tissue,"/cis_predicted_expression.txt"), header = T)
+cis_predicted_expression = fread(paste0(opt$output_dir,"/GBAT/",tissue,"/cis_predicted_expression.txt"), header = T)
 
 for (fold in 0:5) {
 
-	target_gene_expression_file_name <- paste0("fold_", fold, "_info/",tissue,"/train_expression.txt")
+	target_gene_expression_file_name <- paste0(opt$output_dir,"/fold_", fold, "_info/",tissue,"/train_expression.txt")
 
     	target_gene_fold <- SlicedData$new()
 
@@ -36,7 +36,7 @@ for (fold in 0:5) {
     	# Load the file
     	target_gene_fold$LoadFile(target_gene_expression_file_name)
 
-        fold_individuals = fread(paste0("fold_",fold,"_info/",tissue,"/train_individuals.txt"),header = F)
+        fold_individuals = fread(paste0(opt$output_dir,"/fold_",fold,"_info/",tissue,"/train_individuals.txt"),header = F)
 	matched_cols <- match(paste0("0:", unlist(fold_individuals$V1)), colnames(cis_predicted_expression))
 
 	# Remove NA values from matched indices
@@ -47,9 +47,9 @@ for (fold in 0:5) {
         if (!file.exists(paste0("GBAT/",tissue,"/fold_",fold,"/"))) {
                 dir.create(paste0("GBAT/",tissue,"/fold_",fold,"/"), recursive = T)
         }
-        fwrite(prediction_subset,paste0("GBAT/",tissue,"/fold_",fold,"/cis_predicted_expression.txt"),row.names = F, col.names = T,quote = F, sep = '\t')
+        fwrite(prediction_subset,paste0(opt$output_dir,"/GBAT/",tissue,"/fold_",fold,"/cis_predicted_expression.txt"),row.names = F, col.names = T,quote = F, sep = '\t')
 
-        predicted_gene_expression_file_name = paste0("GBAT/",tissue,"/fold_",fold,"/cis_predicted_expression.txt")
+        predicted_gene_expression_file_name = paste0(opt$output_dir,"/GBAT/",tissue,"/fold_",fold,"/cis_predicted_expression.txt")
         predicted_gene_expression = SlicedData$new()
         predicted_gene_expression$fileDelimiter = "\t"     
         predicted_gene_expression$fileOmitCharacters = "NA" 
@@ -65,7 +65,7 @@ for (fold in 0:5) {
         me = Matrix_eQTL_main(
                 gene = target_gene_fold,
                 snps = predicted_gene_expression,
-                output_file_name = paste0("GBAT/",tissue,"/fold_",fold,"/association_results.txt"),
+                output_file_name = paste0(opt$output_dir,"/GBAT/",tissue,"/fold_",fold,"/association_results.txt"),
                 pvOutputThreshold = 0.0001,
                 useModel = modelLINEAR,
                 errorCovariance = errorCovariance,

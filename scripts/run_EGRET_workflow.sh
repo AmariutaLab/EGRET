@@ -9,9 +9,10 @@
 #SBATCH --export=ALL
 #SBATCH -t 08:00:00
 
-source ~./bashrc
+source ~/.bashrc
 conda activate transTWAS_env
 
+home_dir="/expanse/lustre/projects/ddp412/kbrunton/EGRET"
 tissue="Whole_Blood"
 
 genotypes_file_path="../../../tamariutabartell/gtex/GTEx_v8_genotype_EUR_HM3_exclude_dups.allchr.reorder"
@@ -26,8 +27,9 @@ gene_info_file_path="../../data/GTEx_V8.txt.gz"
 FDR="0.1"
 num_PCs="10"
 models="lasso,enet,blup,xtune"
-output_dir="test_output"
+output_dir="test_output/"
 
+if false ; then
 ./setup_genotype_and_expression.sh \
     $genotypes_file_path \
     $expression_file_path \
@@ -42,19 +44,26 @@ output_dir="test_output"
     $output_dir
 
 
+
 ./MatrixeQTL_scripts.sh \
     $tissue \
     $FDR \
-    $genotype_output_prefix \
+    $folds \
     $gene_info_file_path \
+    $genotype_output_prefix \
     $output_dir
 
+fi
 
+cis_model_dir="${home_dir}/FUSION/${tissue}/cis/"
 ./GBAT_scripts.sh \
     $tissue \
     $FDR \
     $folds \
-    $gene_info \
+    $gene_info_file_path \
+    $cis_model_dir \
+    $plink_path \
+    $genotypes_file_path \
     $output_dir
 
 ./transPCO_scripts.sh \

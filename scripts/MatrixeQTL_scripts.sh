@@ -7,15 +7,19 @@ gene_info=$4                # gene info file containing gene id, chr, start loca
 genotype_output_prefix=$5   # to access the bim file for snp location
 output_dir=$6               # output directory where results will be stored
 
+
+if false ; then
 Rscript 7_run_MatrixeQTL.R \
     --tissue ${tissue} \
     --folds ${folds} \
     --output_dir ${output_dir}
 
+fi
+
 Rscript 8_make_MatrixeQTL_bed_by_FDR.R \
     --tissue ${tissue} \
-    --FDR ${FDR} \
     --folds ${folds} \
+    --FDR ${FDR} \
     --gene_info ${gene_info} \
     --genotype_output_prefix ${genotype_output_prefix} \
     --output_dir ${output_dir}
