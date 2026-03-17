@@ -56,7 +56,7 @@ for (fold in 0:5) {
 	#power = c(c(1:10),seq(from = 12, to = 50, by = 2))
 	#sft = pickSoftThreshold(t(residual_gene_expression_no_xy),powerVector = power,networkType = 'signed',verbose = 5)
 	#power = sft$powerEstimate
-	power = 3
+	power = 5
 	print(paste0("The power is ", power))
 
 	temp_cor = cor

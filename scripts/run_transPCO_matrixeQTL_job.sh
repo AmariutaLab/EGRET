@@ -7,7 +7,7 @@
 #SBATCH --mem=12G
 #SBATCH --account=csd832
 #SBATCH --export=ALL
-#SBATCH -t 06:00:00
+#SBATCH -t 12:00:00
 
 source ~/.bashrc
 conda activate transTWAS_env

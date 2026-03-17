@@ -8,7 +8,6 @@ plink_path=$6
 output_dir=$7
 genotype_prefix=${8:-"GTEX_v8_genotypes_pruned"}
 
-if false ; then
 
 Rscript 9.0_run_WGCNA_clustering.R \
 	--expression ${output_dir}/expression_files/Whole_Blood_expression.txt.gz \
@@ -26,7 +25,6 @@ Rscript 9.1_initialize_chr_genotypes.R \
     --folds $folds \
     --genotype_prefix $genotype_prefix \
     --plink_path $plink_path
-
 
 
 
@@ -65,7 +63,7 @@ else
     dependency=""
 fi
 
-fi
+
 # Submit one PCO association job per module, dependent on all MatrixEQTL jobs
 modules=$(find ${output_dir}/transPCO/${tissue}/fold_*/modules/ -type f -exec basename {} \; | sort | uniq)
 
@@ -84,10 +82,13 @@ do
 done
 echo "Submitted ${#pco_job_ids[@]} PCO association jobs"
 
-# Submit results analysis after all PCO jobs finish
+# Count expected modules for verification
+module_count=$(echo "$modules" | wc -w)
+
+# Submit results analysis after all PCO jobs finish (afterany so it can check file counts itself)
 if [ ${#pco_job_ids[@]} -gt 0 ]; then
     pco_dep_str=$(IFS=:; echo "${pco_job_ids[*]}")
-    pco_dependency="--dependency=afterok:${pco_dep_str}"
+    pco_dependency="--dependency=afterany:${pco_dep_str}"
 else
     pco_dependency=""
 fi
@@ -96,4 +97,5 @@ sbatch $pco_dependency run_transPCO_results_analysis_job.sh \
     $tissue \
     $FDR \
     $output_dir \
-    $folds
+    $folds \
+    $module_count

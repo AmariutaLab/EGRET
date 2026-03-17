@@ -7,7 +7,7 @@
 #SBATCH --mem=12G
 #SBATCH --account=csd832
 #SBATCH --export=ALL
-#SBATCH -t 04:00:00
+#SBATCH -t 12:00:00
 
 source ~/.bashrc
 conda activate transTWAS_env
@@ -18,6 +18,24 @@ module_dir=$3
 output_dir=$4
 folds=$5
 gene_info=$6
+
+# Check that association result files exist before running PCO
+module_name="${module%.*}"  # strip file extension
+
+missing=0
+for fold in $(seq 0 $folds); do
+    assoc_dir="${output_dir}/transPCO/${tissue}/fold_${fold}/association_results"
+    count=$(ls "${assoc_dir}"/matrix_${module_name}_chr_*.txt.gz 2>/dev/null | wc -l)
+    if [ "$count" -eq 0 ]; then
+        echo "ERROR: No association files found for ${module_name} in fold_${fold} at ${assoc_dir}"
+        missing=1
+    fi
+done
+
+if [ "$missing" -eq 1 ]; then
+    echo "Exiting: missing association result files for module ${module_name}"
+    exit 1
+fi
 
 Rscript 9.3_transPCO_multivariate_association_by_module.R \
     --tissue $tissue \

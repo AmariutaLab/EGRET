@@ -3,12 +3,18 @@ library(optparse)
 
 # Define command-line options
 option_list = list(
-  make_option("--tissue", type = "character", default = "Whole_Blood", 
+  make_option("--tissue", type = "character", default = "Whole_Blood",
               help = "Tissue name to process", metavar = "character"),
-  make_option("--FDR", type = "numeric", default = 0.1, 
+  make_option("--FDR", type = "numeric", default = 0.1,
               help = "false discovery rate", metavar = "numeric"),
-  make_option("--output_dir", type = "character", default = "bed_files", 
-              help = "Output file name for significant results", metavar = "character"),
+  make_option("--output_dir", type = "character", default = ".",
+              help = "Base output directory", metavar = "character"),
+  make_option("--bed_dir", type = "character", default = "bed_files",
+              help = "Subdirectory name for bed output files", metavar = "character"),
+  make_option("--folds", type = "integer", default = 5,
+              help = "Number of cross-validation folds", metavar = "integer"),
+  make_option("--genotype_prefix", type = "character", default = "GTEX_v8_genotypes_pruned",
+              help = "Prefix for genotype files", metavar = "character"),
   make_option("--PCO_association_dir",type = 'character',default = 'PCO_association_results',
 	      help = "place where association results are stored"),
   make_option("--module_dir", type = "character", default = "modules",
@@ -25,18 +31,18 @@ output_dir = opt$output_dir
 PCO_association_dir = opt$PCO_association_dir
 
 # Initialize results data.table
-all_snp_info = fread(paste0("genotype_files/GTEX_v8_genotypes_pruned.bim"), header = F)
+all_snp_info = fread(paste0(output_dir, "/genotype_files/", opt$genotype_prefix, ".bim"), header = F)
 
-for (fold in 0:5) {
+for (fold in 0:opt$folds) {
   sig_results = data.table(module = numeric(), rsIDs = character(), pval = numeric(),FDR = numeric())
   # Determine number of modules
-  module_dir = paste0("transPCO/", tissue, "/fold_", fold, "/",opt$module_dir,"/")
+  module_dir = paste0(output_dir, "/transPCO/", tissue, "/fold_", fold, "/",opt$module_dir,"/")
   modules = list.files(module_dir)
 
-  PCO_association_path = paste0("transPCO/", tissue, "/fold_", fold, "/",opt$PCO_association_dir,"/")
+  PCO_association_path = paste0(output_dir, "/transPCO/", tissue, "/fold_", fold, "/",opt$PCO_association_dir,"/")
 
   # Create bed directory
-  bed_dir = paste0("transPCO/", tissue, "/fold_", fold, "/",output_dir,"/")
+  bed_dir = paste0(output_dir, "/transPCO/", tissue, "/fold_", fold, "/",opt$bed_dir,"/")
   dir.create(bed_dir, recursive = TRUE)
   largest_sig_pval = c()
   for (module in modules) {
@@ -77,7 +83,7 @@ for (fold in 0:5) {
     }
   }
   print(mean(largest_sig_pval,na.rm = T))
-  fwrite(sig_results,paste0("transPCO/",tissue,"/fold_",fold,"/significant_results_",opt$module_dir,"_FDR_",FDR,".txt"), col.names = T, row.names = F, sep = '\t', quote = F)
+  fwrite(sig_results,paste0(output_dir, "/transPCO/",tissue,"/fold_",fold,"/significant_results_",opt$module_dir,"_FDR_",FDR,".txt"), col.names = T, row.names = F, sep = '\t', quote = F)
 }
 
 

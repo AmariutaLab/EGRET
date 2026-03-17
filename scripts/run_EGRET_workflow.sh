@@ -28,6 +28,13 @@ FDR="0.1"
 num_PCs="10"
 models="lasso,enet,blup,xtune"
 output_dir="test_output/"
+MatrixeQTL_bed_dir="results_FDR_${FDR}"
+GBAT_bed_dir="results_FDR_${FDR}"
+transPCO_bed_dir="bed_files_FDR_${FDR}"
+egret_output_subdir="EGRET"
+fusion_models="xtune,lasso,enet,blup"
+gemma_path="../full_workflow/gemma-0.98.5-linux-static-AMD64"
+chunk_size=500
 
 if false ; then
 ./setup_genotype_and_expression.sh \
@@ -79,7 +86,21 @@ fi
     $tissue \
     $folds \
     $models \
-    $output_dir
+    $genotypes_file_path \
+    $expression_file_path \
+    $plink_path \
+    $output_dir \
+    $MatrixeQTL_bed_dir \
+    $GBAT_bed_dir \
+    $transPCO_bed_dir \
+    TRUE \
+    background_mismatches \
+    $genotype_output_prefix \
+    $egret_output_subdir \
+    $fusion_models \
+    $gemma_path \
+    $chunk_size \
+    $gene_info_file_path
 
 ./run_TWAS_scripts.sh \
     $tissue \

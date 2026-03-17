@@ -26,7 +26,11 @@ option_list = list(
   make_option("--z_matrix_dir", action = 'store', default = NA, type = 'character',
 	help = 'directory containing z_matrix for each fold'),
   make_option("--clean", action="store", default=FALSE,
-        help="whether to clean working dir after run")		   
+        help="whether to clean working dir after run"),
+  make_option("--gene_info_file", action="store", default="../data/GTEx_V8.txt.gz", type='character',
+        help="path to gene info file (e.g. GTEx_V8.txt.gz)"),
+  make_option("--folds", action="store", default=5, type='numeric',
+        help="number of cross-validation folds")
 	)
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -128,12 +132,13 @@ cleanup = function() {
 }
 
 
-fold_0_individuals = fread(paste0("fold_0_info/",tissue,"/train_individuals.txt"),header = F)
-fold_1_individuals = fread(paste0("fold_1_info/",tissue,"/train_individuals.txt"),header = F)
-fold_2_individuals = fread(paste0("fold_2_info/",tissue,"/train_individuals.txt"),header = F)
-fold_3_individuals = fread(paste0("fold_3_info/",tissue,"/train_individuals.txt"),header = F)
-fold_4_individuals = fread(paste0("fold_4_info/",tissue,"/train_individuals.txt"),header = F)
-fold_5_individuals = fread(paste0("fold_5_info/",tissue,"/train_individuals.txt"),header = F)
+num_folds = opt$folds
+fold_individuals = list()
+for (f in 0:num_folds) {
+    fold_individuals[[paste0("fold_", f)]] = fread(
+        paste0("fold_", f, "_info/", tissue, "/train_individuals.txt"), header = F
+    )
+}
 
 if(!is.na(opt$covar)) {
 	covar = fread(opt$covar,header = T)
@@ -154,22 +159,22 @@ rownames(cv.performance_trans) = c("rsq","pval")
 colnames(cv.performance_trans) = models
 
 
-cv.calls = matrix(NA,nrow=nrow(fold_0_individuals),ncol=M)
+cv.calls = matrix(NA,nrow=nrow(fold_individuals[["fold_0"]]),ncol=M)
 
 #new
-cv.calls_cis = matrix(NA,nrow=nrow(fold_0_individuals),ncol=M)
-cv.calls_trans = matrix(NA,nrow=nrow(fold_0_individuals),ncol=M)
+cv.calls_cis = matrix(NA,nrow=nrow(fold_individuals[["fold_0"]]),ncol=M)
+cv.calls_trans = matrix(NA,nrow=nrow(fold_individuals[["fold_0"]]),ncol=M)
 alphas = c()
 
 
 #new stuff to do cis/trans analysis
-all_gene_info = fread("../data/GTEx_V8.txt.gz", header = T)
+all_gene_info = fread(opt$gene_info_file, header = T)
 gene_info = all_gene_info[grep(opt$gene, all_gene_info$geneId),]
 u_bound = max(0,gene_info$chromStart - 2500000)
 l_bound = gene_info$chromStart + 2500000
 chr = strsplit(gene_info$'#chrom','chr')[[1]][2]
 
-for (fold in 1:5) {
+for (fold in 1:num_folds) {
 	print("starting cross val")
 	# read in genotypes
 	genos = read_plink(paste0(opt$working_dir,"/fold_",fold,"/",opt$gene),impute="avg") 
@@ -205,10 +210,10 @@ for (fold in 1:5) {
 	}
 	
 	#subset geno and pheno files to train individuals
-	keep_geno = match(paste0("0:",unlist(get(paste0("fold_",fold,"_individuals")))),rownames(genos$bed))
+	keep_geno = match(paste0("0:",unlist(fold_individuals[[paste0("fold_",fold)]])),rownames(genos$bed))
 	train_geno = genos$bed[keep_geno,]
 	
-	keep_pheno = match(unlist(get(paste0("fold_",fold,"_individuals"))),pheno[,2])
+	keep_pheno = match(unlist(fold_individuals[[paste0("fold_",fold)]]),pheno[,2])
         train_pheno = pheno[keep_pheno,]
 	
 
