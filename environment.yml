@@ -5,15 +5,16 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - conda-forge::r-r.utils
-  - conda-forge::r-data.table
-  - bioconda::r-wgcna
-  - conda-forge::r-optparse
-  - conda-forge::r-rcppeigen
-  - conda-forge/label/cf201901::glmnet
-  - conda-forge::r-glmnet
-  - conda-forge::r-matrixeqtl
-  - conda-forge::r-devtools
-  - conda-forge::r-tidyr
-  - conda-forge::r-mclust
-prefix: /home/kbrunton/.conda/envs/transTWAS_env
+  # R packages
+  - r-base>=4.1
+  - r-r.utils
+  - r-data.table
+  - r-wgcna
+  - r-optparse
+  - r-rcppeigen
+  - r-glmnet
+  - r-matrixeqtl
+  - r-devtools
+  - r-tidyr
+  - r-mclust
+  - r-ggplot2
