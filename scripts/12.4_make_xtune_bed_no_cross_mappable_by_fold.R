@@ -27,7 +27,11 @@ option_list = list(
   make_option("--plink_path", action="store", default="plink2", type='character',
               help="path to plink2 executable"),
   make_option("--expression_file", action="store", default=NA, type='character',
-              help="optional expression file to define gene list; if not provided, uses cis bed dir")
+              help="optional expression file to define gene list; if not provided, uses cis bed dir"),
+  make_option("--gene_information", action="store", default=NA, type='character',
+              help="Path to file containing gene information"),
+  make_option("--cis_window_size", action="store", default=1000000, type='numeric',
+              help="size of cis window to create")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -39,8 +43,10 @@ if (!is.na(opt$expression_file)) {
   expression = fread(opt$expression_file, header = T)
   genes = expression$gene
 } else {
-  genes = list.files(paste0(base_dir, "/bed_files/", tissue, "/cis/"))
+  print("please use valid expression file")
+  q()
 }
+all_gene_info = fread(opt$gene_information, header = T)
 
 allsnps = fread(paste0(base_dir, "/genotype_files/", opt$genotype_prefix, ".bim"), header = F)
 
@@ -52,16 +58,24 @@ crossmap_dir = opt$crossmap_dir
 for (gene in genes) {
 	bed_file = matrix(ncol = 6,nrow = 0)
 
-	gene_name = tools::file_path_sans_ext(gene)
-	gene = paste0(gene_name,".bed")
-	print(gene_name)
+	gene_name = gene
+
+	gene_info = all_gene_info[all_gene_info$geneId == gene_name, ]
+	chr = strsplit(gene_info$'#chrom', split = 'chr')[[1]][2]
+	tss = gene_info$chromStart
+	if (chr == 'X' | chr == 'Y') {
+		next
+	}
 
 	#cis
 	cis_bed_path = paste0(base_dir, "/bed_files/",tissue,"/cis/",gene)
 	if (file.exists(cis_bed_path)) {
 		cis_bed = fread(cis_bed_path,header = F)
 	} else {
-		next
+		bounds_u = max(1, tss - floor(opt$cis_window_size/2))
+		bounds_l = tss + floor(opt$cis_window_size/2)
+		bed = c(chr, bounds_u, bounds_l, gene_name, 0, "+")
+		cis_bed = matrix(bed, nrow = 1, ncol = 6)
 	}
 
 	#GBAT

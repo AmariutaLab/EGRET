@@ -23,16 +23,24 @@ gene_info=$6
 module_name="${module%.*}"  # strip file extension
 
 missing=0
+has_any=0
 for fold in $(seq 0 $folds); do
+    module_file="${output_dir}/transPCO/${tissue}/fold_${fold}/${module_dir}/${module}"
+    if [ ! -f "$module_file" ]; then
+        echo "NOTICE: Module ${module_name} not present in fold_${fold} (expected for small modules)"
+        continue
+    fi
     assoc_dir="${output_dir}/transPCO/${tissue}/fold_${fold}/association_results"
     count=$(ls "${assoc_dir}"/matrix_${module_name}_chr_*.txt.gz 2>/dev/null | wc -l)
     if [ "$count" -eq 0 ]; then
         echo "ERROR: No association files found for ${module_name} in fold_${fold} at ${assoc_dir}"
         missing=1
+    else
+        has_any=1
     fi
 done
 
-if [ "$missing" -eq 1 ]; then
+if [ "$has_any" -eq 0 ] || [ "$missing" -eq 1 ]; then
     echo "Exiting: missing association result files for module ${module_name}"
     exit 1
 fi

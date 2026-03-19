@@ -67,8 +67,9 @@ for (fold in 0:opt$folds) {
     valid_genes = gene_info$geneId[gene_info$`#chrom` != paste0("chr", chr)]
     genes_in_module_filtered = genes_in_module[V1 %in% valid_genes, ]
 
-    if (nrow(genes_in_module_filtered) == 0) {
-      cat(sprintf("No valid genes for Module: %s, Chromosome: %d, Fold: %d\n", module_name, chr, fold))
+    if (nrow(genes_in_module_filtered) < 2) {
+      cat(sprintf("Too few genes (%d) for Module: %s, Chromosome: %d, Fold: %d\n",
+                  nrow(genes_in_module_filtered), module_name, chr, fold))
       next
     }
 

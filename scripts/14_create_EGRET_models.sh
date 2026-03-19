@@ -17,9 +17,9 @@ base_dir=${4:-"."}
 model_config=${5:-"EGRET"}
 folds=${6:-5}
 plink_path=${7:-"plink2"}
-gemma_path=${8:-"../../../gemma-0.98.5-linux-static-AMD64"}
+gemma_path=${8:-"./gemma-0.98.5-linux-static-AMD64"}
 expression_file_path=${9:-"expression_files/${tissue}_expression.txt.gz"}
-fusion_models=${10:-"xtune,lasso,enet,blup"}
+models=${10:-"xtune,lasso,enet,blup"}
 gene_info_file_path=${11:-"../../data/GTEx_V8.txt.gz"}
 
 if [ -n "$tissue" ]; then
@@ -32,14 +32,14 @@ fi
 home_dir=/expanse/lustre/projects/ddp412/kbrunton
 
 #Define output directions
-weights="${base_dir}/xtune_fusion_models/${tissue}/${model_config}_no_cis"
+weights="${base_dir}/xtune_fusion_models/${tissue}/${model_config}"
 mkdir -p "$weights"
-wd="${base_dir}/working/${tissue}/${model_config}_no_cis"
+wd="${base_dir}/working/${tissue}/${model_config}"
 mkdir -p "$wd"
-output="${base_dir}/xtune_fusion_results/${tissue}/${model_config}_no_cis"
+output="${base_dir}/xtune_fusion_results/${tissue}/${model_config}"
 mkdir -p "$output"
 
-z_matrix_dir="${base_dir}/z_matrices/${tissue}/${model_config}_no_cis"
+z_matrix_dir="${base_dir}/z_matrices/${tissue}/${model_config}"
 
 plink_dir="${base_dir}/plink_results/${tissue}/${model_config}"
 
@@ -61,7 +61,6 @@ do
 	mkdir -p $wd/fold_$i
 	${plink_path} --bfile $plink_dir/fold_$i/$gene --make-bed --keep $individuals --indiv-sort f $individuals --out $wd/fold_$i/${gene}
 	rm $wd/fold_$i/${gene}.log
-
 	rowid=$(zcat $gefile | awk 'NR > 1 {print $1}' | nl | grep ${gene} | awk '{print $1 + 1}')
 	ge_EURdonors=$(zcat $gefile | head -n $rowid | tail -n 1 | cut -f $colind2)
 	paste --delimiters='\t' <(cut -f1-5 $wd/fold_$i/${gene}.fam) <(echo $ge_EURdonors | sed 's/ /\n/g') > $wd/fold_$i/${gene}.mod.fam
@@ -72,7 +71,7 @@ echo "running xtune fusion"
 Rscript xtune_fusion_cis_trans.R \
     --gene $gene \
     --working_dir "$wd" \
-    --models "$fusion_models" \
+    --models "$models" \
     --output_dir "$output" \
     --weights_dir "$weights" \
     --tissue "$tissue" \
@@ -81,5 +80,6 @@ Rscript xtune_fusion_cis_trans.R \
     --covar "${base_dir}/covariate_files/${tissue}_covariates.txt.gz" \
     --z_matrix_dir "$z_matrix_dir" \
     --gene_info_file "$gene_info_file_path" \
-    --folds "$folds"
+    --folds "$folds" \
+    --base_dir $base_dir
 done

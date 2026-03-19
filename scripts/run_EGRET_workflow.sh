@@ -33,7 +33,7 @@ GBAT_bed_dir="results_FDR_${FDR}"
 transPCO_bed_dir="bed_files_FDR_${FDR}"
 egret_output_subdir="EGRET"
 fusion_models="xtune,lasso,enet,blup"
-gemma_path="../full_workflow/gemma-0.98.5-linux-static-AMD64"
+gemma_path="./gemma-0.98.5-linux-static-AMD64"
 chunk_size=500
 
 if false ; then
@@ -49,8 +49,6 @@ if false ; then
     $folds \
     $gene_info_file_path \
     $output_dir
-
-
 
 ./MatrixeQTL_scripts.sh \
     $tissue \
@@ -71,7 +69,6 @@ cis_model_dir="${home_dir}/FUSION/${tissue}/cis/"
     $genotypes_file_path \
     $output_dir
 
-fi
 
 ./transPCO_scripts.sh \
     $tissue \
@@ -82,12 +79,12 @@ fi
     $plink_path \
     $output_dir
 
+fi
+
 ./train_EGRET_models.sh \
     $tissue \
     $folds \
     $models \
-    $genotypes_file_path \
-    $expression_file_path \
     $plink_path \
     $output_dir \
     $MatrixeQTL_bed_dir \

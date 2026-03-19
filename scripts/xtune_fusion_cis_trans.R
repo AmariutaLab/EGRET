@@ -30,8 +30,9 @@ option_list = list(
   make_option("--gene_info_file", action="store", default="../data/GTEx_V8.txt.gz", type='character',
         help="path to gene info file (e.g. GTEx_V8.txt.gz)"),
   make_option("--folds", action="store", default=5, type='numeric',
-        help="number of cross-validation folds")
-	)
+        help="number of cross-validation folds"),
+  make_option("--base_dir", action="store", default=NA, type='character',
+        help="Path to output dir"))
 
 opt = parse_args(OptionParser(option_list=option_list))
 tissue = opt$tissue
@@ -51,12 +52,12 @@ weights.enet = function( genos , pheno , alpha=1 ) {   #alpha has been changed t
 }
 
 #BLUP/BSLMM
-weights.bslmm = function( input , bv_type , snp , out=NA ) {
-        if ( is.na(out) ) out = paste(input,".BSLMM",sep='')
-	print(paste0(" -o ../" , out))
-        #arg = paste( opt$PATH_gemma , " -miss 1 -maf 0 -r2 1 -rpace 1000 -wpace 1000 -bfile " , input , " -bslmm " , bv_type , " -o ../" , out , sep='' )
-        arg = paste( opt$PATH_gemma , " -miss 1 -maf 0 -r2 1 -rpace 1000 -wpace 1000 -bfile " , input , " -bslmm " , bv_type , " -o ../../../../../../../" , out , sep='' )
-	system( arg)
+weights.bslmm = function( input , bv_type , snp , fold ) {
+        outdir = paste0(opt$working_dir, "/fold_", fold)
+        prefix = paste0(opt$gene, ".BSLMM")
+        arg = paste( opt$PATH_gemma , " -miss 1 -maf 0 -r2 1 -rpace 1000 -wpace 1000 -bfile " , input , " -bslmm " , bv_type , " -outdir " , outdir , " -o " , prefix , sep='' )
+	system(arg)
+        out = paste0(outdir, "/", prefix)
 	print(file.exists(paste(out,".param.txt",sep='')))
         eff = read.table( paste(out,".param.txt",sep=''),head=T,as.is=T)
         eff.wgt = rep(NA,length(snp))
@@ -66,7 +67,6 @@ weights.bslmm = function( input , bv_type , snp , out=NA ) {
         eff.wgt[m.keep] = (eff$alpha + eff$beta * eff$gamma)[m]
         return( eff.wgt )
 }
-
 
 
 # ---- XTUNE LASSO ----  
@@ -131,12 +131,11 @@ cleanup = function() {
         }
 }
 
-
 num_folds = opt$folds
 fold_individuals = list()
 for (f in 0:num_folds) {
     fold_individuals[[paste0("fold_", f)]] = fread(
-        paste0("fold_", f, "_info/", tissue, "/train_individuals.txt"), header = F
+        paste0(opt$base_dir,"/fold_", f, "_info/", tissue, "/train_individuals.txt"), header = F
     )
 }
 
@@ -166,9 +165,10 @@ cv.calls_cis = matrix(NA,nrow=nrow(fold_individuals[["fold_0"]]),ncol=M)
 cv.calls_trans = matrix(NA,nrow=nrow(fold_individuals[["fold_0"]]),ncol=M)
 alphas = c()
 
-
+print('here')
 #new stuff to do cis/trans analysis
 all_gene_info = fread(opt$gene_info_file, header = T)
+print('here2')
 gene_info = all_gene_info[grep(opt$gene, all_gene_info$geneId),]
 u_bound = max(0,gene_info$chromStart - 2500000)
 l_bound = gene_info$chromStart + 2500000
@@ -240,7 +240,7 @@ for (fold in 1:num_folds) {
 			pred.wgt = weights.enet( train_geno , as.matrix(train_pheno[,3]) , alpha=0.5 )
 		}
 		else if ( models[mod] == "blup" ) {
-                        pred.wgt = weights.bslmm( cv.file , bv_type=2 , snp=genos$bim[,2] )
+                        pred.wgt = weights.bslmm( cv.file , bv_type=2 , snp=genos$bim[,2] , fold=fold )
                 }
 		else if ( models[mod] == "top1" ) {
                         pred.wgt = weights.marginal( train_geno , as.matrix(train_pheno[,3]) , beta=T )
@@ -340,7 +340,7 @@ for (mod in 1:M) {
                 wgt.matrix[,mod] = weights.enet( genos$bed , as.matrix(pheno[,3]) , alpha=0.5 )
         }
         else if ( models[mod] == "blup" ) {
-                wgt.matrix[,mod] = weights.bslmm( geno.file , bv_type=2 , snp=genos$bim[,2] )
+                wgt.matrix[,mod] = weights.bslmm( geno.file , bv_type=2 , snp=genos$bim[,2] , fold=0 )
         }
 	else if ( models[mod] == "top1" ) {
                 wgt.matrix[,mod] = weights.marginal( genos$bed , as.matrix(pheno[,3]) , beta=F )
