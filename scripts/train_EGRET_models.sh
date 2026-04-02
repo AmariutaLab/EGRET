@@ -56,10 +56,7 @@ echo "Submitting $num_chunks model chunks"
 for ((i = 0; i < num_chunks; i++)); do
         start_index=$((i * chunk_size))
         end_index=$((start_index + chunk_size - 1))
- #       sbatch $dependency 14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
- #           "$output_dir" "$egret_output_subdir" "$folds" "$plink_path" \
- #           "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path"
-        source 14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
+        sbatch $dependency 14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
             "$output_dir" "$egret_output_subdir" "$folds" "$plink_path" \
             "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path"
 done

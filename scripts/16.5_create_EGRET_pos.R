@@ -3,7 +3,11 @@ library(optparse)
 
 option_list = list(
   make_option("--tissue", action="store",default=NA, type='character',
-              help="tissue for analysis")
+              help="tissue for analysis"),
+  make_option("--output_dir", action="store", default=NA, type='character',
+              help="Path to output directory"),
+  make_option("--gene_info_file_path", action="store", default="../data/GTEx_V8.txt.gz", type='character',
+              help="Path to gene info file")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -14,12 +18,14 @@ if (is.na(opt$tissue)) {
 } else {
         tissue = opt$tissue
 }
+output_dir = opt$output_dir
 
-all_gene_info = fread("../data/GTEx_V8.txt.gz", header = T)
-sumstats = fread(paste0("results_sumstats/",tissue,"/cis_MatrixeQTL_GBAT_transPCO_FDR_0.1.txt"),header = T)
+gene_info_file_path = opt$gene_info_file_path
+all_gene_info = fread(gene_info_file_path, header = T)
+sumstats = fread(paste0(output_dir,"/results_sumstats/",tissue,"/EGRET.txt"),header = T)
 sumstats$best_r2_pval = pmin(sumstats$p_gw, sumstats$p_cis_part, sumstats$p_trans_part, na.rm = TRUE)
 print(sumstats)
-wgt_dir = paste0("xtune_fusion_models/",tissue,"/cis_MatrixeQTL_GBAT_transPCO_FDR_0.1/")  
+wgt_dir = paste0(output_dir,"/xtune_fusion_models/",tissue,"/EGRET/")  
 
 pos_matrix = data.frame(WGT = as.character(),ID = as.character(),CHR = as.numeric(), P0 = as.numeric(),P1 = as.numeric())
 
@@ -38,7 +44,7 @@ for (row in 1:nrow(sumstats)) {
 
 }
 
-pos_dir = paste0("pos_files/",tissue,"/")
+pos_dir = paste0(output_dir,"/pos_files/",tissue,"/")
 dir.create(pos_dir,recursive = T)
 
-fwrite(pos_matrix,paste0(pos_dir,"cis_MatrixeQTL_GBAT_transPCO_FDR_0.1.pos"),sep = '\t', quote = F, col.names = T, row.names = F)
+fwrite(pos_matrix,paste0(pos_dir,"EGRET.pos"),sep = '\t', quote = F, col.names = T, row.names = F)
