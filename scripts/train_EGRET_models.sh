@@ -15,13 +15,13 @@ fusion_models=${13:-"xtune,lasso,enet,blup"}
 gemma_path=${14:-"./gemma-0.98.5-linux-static-AMD64"}
 chunk_size=${15:-500}
 gene_info_file_path=${16:-"../../data/GTEx_V8.txt.gz"}
+scripts_dir=${17}
 
 expression_file_path=${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz
 
-if false ; then
 bed_job_ids=()
 for fold in $(seq 0 $folds); do
-    jid=$(sbatch --parsable run_make_EGRET_bed_files.sh \
+    jid=$(sbatch --parsable ${scripts_dir}/run_make_EGRET_bed_files.sh \
         "$tissue" \
         "$output_dir" \
         "$MatrixeQTL_bed_dir" \
@@ -34,7 +34,8 @@ for fold in $(seq 0 $folds); do
         "$plink_path" \
         "$expression_file_path" \
         "$fold" \
-        "$gene_info_file_path")
+        "$gene_info_file_path" \
+        "$scripts_dir")
     bed_job_ids+=($jid)
     echo "Submitted bed file job $jid for fold $fold"
 done
@@ -43,7 +44,7 @@ echo "Submitted ${#bed_job_ids[@]} bed file jobs"
 # Build dependency string so model jobs wait for all bed file jobs
 dep_str=$(IFS=:; echo "${bed_job_ids[*]}")
 dependency="--dependency=afterok:${dep_str}"
-fi
+
 
 # Estimate gene count from expression file (upper bound)
 num_genes=$(zcat "${output_dir}/expression_files/${tissue}_expression.txt.gz" | tail -n +2 | wc -l)
@@ -56,7 +57,8 @@ echo "Submitting $num_chunks model chunks"
 for ((i = 0; i < num_chunks; i++)); do
         start_index=$((i * chunk_size))
         end_index=$((start_index + chunk_size - 1))
-        sbatch $dependency 14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
+        sbatch $dependency ${scripts_dir}/14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
             "$output_dir" "$egret_output_subdir" "$folds" "$plink_path" \
-            "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path"
+            "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path" \
+            "$scripts_dir"
 done

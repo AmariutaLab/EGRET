@@ -21,6 +21,7 @@ gemma_path=${8:-"./gemma-0.98.5-linux-static-AMD64"}
 expression_file_path=${9:-"expression_files/${tissue}_expression.txt.gz"}
 models=${10:-"xtune,lasso,enet,blup"}
 gene_info_file_path=${11:-"../../data/GTEx_V8.txt.gz"}
+scripts_dir=${12}
 
 if [ -n "$tissue" ]; then
     echo $tissue
@@ -68,7 +69,7 @@ do
 
 done
 echo "running xtune fusion"
-Rscript xtune_fusion_cis_trans.R \
+Rscript ${scripts_dir}/xtune_fusion_cis_trans.R \
     --gene $gene \
     --working_dir "$wd" \
     --models "$models" \

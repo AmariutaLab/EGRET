@@ -17,6 +17,8 @@ pval_threshold=$2
 output_dir=$3
 folds=$4
 expected_module_count=$5
+scripts_dir=$6
+genotype_prefix=$7
 
 # Verify PCO output files exist before running results analysis
 total_found=0
@@ -44,10 +46,11 @@ for fold in $(seq 0 $folds); do
 done
 echo "Found ${total_found} total PCO output files across all folds"
 
-Rscript 11_transPCO_results_analysis_by_FDR.R \
+Rscript ${scripts_dir}/11_transPCO_results_analysis_by_FDR.R \
     --tissue $tissue \
     --FDR $pval_threshold \
     --output_dir $output_dir \
     --folds $folds \
     --PCO_association_dir PCO_association_results \
-    --module_dir modules
+    --module_dir modules \
+    --genotype_prefix $genotype_prefix

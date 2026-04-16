@@ -8,9 +8,11 @@ cis_model_dir=$5            # directory containing pretrained cis models with la
 plink_path=$6               # path to plink executable
 genotype_file_path=$7       # path to genotype files to use for imputation of cis models
 output_dir=$8               # output directory where results will be stored
+scripts_dir=$9              # directory where scripts are located
 
 if false ; then
-Rscript 5_run_GBAT_updated.R \
+
+Rscript ${scripts_dir}/5_run_GBAT_updated.R \
     --tissue $tissue \
     --gene_info $gene_info \
     --output_dir $output_dir \
@@ -19,11 +21,13 @@ Rscript 5_run_GBAT_updated.R \
     --plink_path $plink_path
 
 
-Rscript 5.1_run_GBAT_association.R \
+Rscript ${scripts_dir}/5.1_run_GBAT_association.R \
     --tissue $tissue \
     --output_dir $output_dir
+
 fi
-Rscript 5.3_make_GBAT_bed_by_FDR.R \
+
+Rscript ${scripts_dir}/5.3_make_GBAT_bed_by_FDR.R \
     --tissue $tissue \
     --gene_info $gene_info \
     --cis_model_dir $cis_model_dir \

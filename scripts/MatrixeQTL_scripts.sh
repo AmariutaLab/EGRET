@@ -6,17 +6,16 @@ folds=$3                    # number of folds
 gene_info=$4                # gene info file containing gene id, chr, start location
 genotype_output_prefix=$5   # to access the bim file for snp location
 output_dir=$6               # output directory where results will be stored
+scripts_dir=$7              # directory where scripts are located
 
 
-if false ; then
-Rscript 7_run_MatrixeQTL.R \
+Rscript ${scripts_dir}/7_run_MatrixeQTL.R \
     --tissue ${tissue} \
     --folds ${folds} \
     --output_dir ${output_dir}
 
-fi
 
-Rscript 8_make_MatrixeQTL_bed_by_FDR.R \
+Rscript ${scripts_dir}/8_make_MatrixeQTL_bed_by_FDR.R \
     --tissue ${tissue} \
     --folds ${folds} \
     --FDR ${FDR} \

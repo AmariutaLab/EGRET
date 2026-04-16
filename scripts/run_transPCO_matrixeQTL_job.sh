@@ -19,8 +19,9 @@ output_dir=$4
 folds=$5
 plink_path=$6
 genotype_prefix=${7:-"GTEX_v8_genotypes_pruned"}
+scripts_dir=$8
 
-Rscript 9.10_cleaned_up_MatrixeQTL_for_transPCO.R \
+Rscript ${scripts_dir}/9.10_cleaned_up_MatrixeQTL_for_transPCO.R \
     --tissue $tissue \
     --module $module \
     --module_dir $module_dir \

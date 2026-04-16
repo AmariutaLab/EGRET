@@ -37,7 +37,8 @@ individuals_path = paste0(opt$output_dir,"/fold_0_info/",tissue,"/train_individu
 individual_ids = fread(individuals_path, header = F)
 
 for (trans_gene in trans_genes) {
-	gene_name = paste0(strsplit(trans_gene,"\\.")[[1]][1:2],collapse = ".")
+	#gene_name = paste0(strsplit(trans_gene,"\\.")[[1]][1:2],collapse = ".")
+    gene_name = substr(trans_gene, 1, nchar(trans_gene) - 9)
 	print(gene_name)
 
     load(paste0(opt$cis_model_dir,trans_gene))

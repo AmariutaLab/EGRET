@@ -18,6 +18,7 @@ module_dir=$3
 output_dir=$4
 folds=$5
 gene_info=$6
+scripts_dir=$7
 
 # Check that association result files exist before running PCO
 module_name="${module%.*}"  # strip file extension
@@ -45,7 +46,7 @@ if [ "$has_any" -eq 0 ] || [ "$missing" -eq 1 ]; then
     exit 1
 fi
 
-Rscript 9.3_transPCO_multivariate_association_by_module.R \
+Rscript ${scripts_dir}/9.3_transPCO_multivariate_association_by_module.R \
     --tissue $tissue \
     --module $module \
     --module_dir $module_dir \
@@ -53,4 +54,5 @@ Rscript 9.3_transPCO_multivariate_association_by_module.R \
     --folds $folds \
     --gene_info $gene_info \
     --results_dir PCO_association_results \
-    --association_dir association_results
+    --association_dir association_results \
+    --scripts_dir $scripts_dir

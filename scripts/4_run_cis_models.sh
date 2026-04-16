@@ -11,37 +11,45 @@
 
 
 tissue=$1
-chunk_size=$2
-end_index=$3
+output_dir=$2
+chunk_size=$3
+end_index=$4
+plink_path=$5
+individuals_file_path=$6
+covariates_file_path=$7
+plink1_path=$8
+gcta_path=$9
+gemma_path=${10}
+scripts_dir=${11}
 
 if [ -n "$tissue" ]; then
     echo $tissue
 else
     echo "no tissue defined"
-    return
+    exit 1
 fi
-home_dir=/expanse/lustre/projects/ddp412/kbrunton
 
 #Define output directions
-wd=working/$tissue/cis
+wd=${output_dir}/working/$tissue/cis
 mkdir -p $wd
-tmpdir=tmp/$tissue/cis
+tmpdir=${output_dir}/tmp/$tissue/cis
 mkdir -p $tmpdir
-weights=FUSION/$tissue/cis
+weights=${output_dir}/FUSION/$tissue/cis
 mkdir -p $weights
 
-for gene in $(ls plink_results/${tissue}/cis | grep .bed | head -n $end_index | tail -n $chunk_size)
+for gene in $(ls ${output_dir}/plink_results/${tissue}/cis | grep .bed | head -n $end_index | tail -n $chunk_size)
 do
 	gene=$(basename $gene .bed)
-	gefile=${home_dir}/full_workflow/expression_files/${tissue}_expression.txt.gz
-	individuals=../TWAS_across_tissues/individuals_per_tissue/${tissue}_individuals.txt
-	covar=../../tamariutabartell/o2_files/gtex_covars/Covar_all_${tissue}.txt
-	#covar=covariate_files/${tissue}_covariates.txt.gz
+	gefile=${output_dir}/expression_files/${tissue}_expression.txt.gz
+	individuals=${individuals_file_path}
+	individuals_plink=${wd}/${gene}_keep.txt
+	awk '{print "0\t"$1}' $individuals > $individuals_plink
+	covar=${covariates_file_path}
 
 	alldonors=$(zcat $gefile | head -n 1)
 	colind=$(echo $alldonors | sed 's| |\n|g' | nl | grep -f $individuals | awk 'BEGIN {ORS=","} {print $1}' | sed 's/,$//')
 
-	../../kakamatsu/plink2 --bfile $home_dir/full_workflow/plink_results/${tissue}/cis/$gene --make-bed --keep $individuals --indiv-sort f $individuals --out $wd/${gene}
+	${plink_path} --bfile ${output_dir}/plink_results/${tissue}/cis/$gene --make-bed --keep $individuals_plink --indiv-sort file $individuals_plink --out $wd/${gene}
 	rm $wd/${gene}.log
 
 	rowid=$(zcat $gefile | nl | grep ${gene} | awk '{print $1}')
@@ -52,6 +60,6 @@ do
 	TMP=$tmpdir/${gene}
 	OUT=$weights/${gene}
 
-	Rscript FUSION.compute_weights.R --bfile $wd/${gene} --crossval 5 --models lasso,blup,enet,top1 --hsq_p 1 --tmp $TMP --out $OUT --covar $covar --PATH_gcta ../../kakamatsu/fusion_twas-master/gcta_nr_robust --PATH_plink ../../kakamatsu/plink --PATH_gemma ../gemma-0.98.5-linux-static-AMD64
+	Rscript ${scripts_dir}/FUSION.compute_weights.R --bfile $wd/${gene} --crossval 5 --models lasso,blup,enet,top1 --hsq_p 1 --tmp $TMP --out $OUT --covar $covar --PATH_gcta ${gcta_path} --PATH_plink ${plink1_path} --PATH_gemma ${gemma_path} --noclean FALSE
 
 done

@@ -18,8 +18,12 @@ option_list = list(
 opt = parse_args(OptionParser(option_list=option_list))
 
 tissue = opt$tissue
+
+bim_file = fread(paste0(opt$output_dir,"/genotype_files/",opt$genotype_prefix,".bim"), header = F, sep = '\t')
+number_chr = max(bim_file$V1)
+
 for (fold in 0:opt$folds) {
-	for (chr in 1:22) {
+	for (chr in 1:number_chr) {
 
                 geno_dir = paste0(opt$output_dir,"/transPCO/",tissue,"/fold_",fold,"/genotype_files")
                 dir.create(geno_dir, recursive=TRUE, showWarnings=FALSE)

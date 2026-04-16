@@ -13,7 +13,7 @@ option_list = list(
 
 opt = parse_args(OptionParser(option_list=option_list))
 tissue = opt$tissue
-print('here')
+
 
 project = opt$project
 output_dir = opt$output_dir
@@ -23,7 +23,7 @@ results = data.frame(gene = as.character(),  r2_gw = as.numeric(),p_gw = as.nume
 
 
 for (gene in unlist(genes)) {
-	gene = paste0(strsplit(gene,"\\.")[[1]][1:2],collapse = ".")
+	gene = substr(gene, 1, nchar(gene) - 9)
 	print(gene)
 
 	if (file.exists(paste0(output_dir,"/xtune_fusion_models/",tissue,"/",project,"/",gene,".wgt.RDat"))) {

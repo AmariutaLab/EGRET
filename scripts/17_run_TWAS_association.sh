@@ -19,6 +19,7 @@ wgt=$4
 wgtdir=$5
 ld_ref=$6
 out_dir=$7
+scripts_dir=$8
 
 chr=1  # doesn't matter if using trans script
 
@@ -29,7 +30,7 @@ if [ -f "${out_dir}/${trait}.dat" ]; then
     exit 0
 fi
 
-Rscript FUSION.assoc_test_trans.R \
+Rscript ${scripts_dir}/FUSION.assoc_test_trans.R \
     --chr $chr \
     --ref_ld_chr $ld_ref \
     --sumstats $gwas_sumstat_path \

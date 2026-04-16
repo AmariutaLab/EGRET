@@ -13,8 +13,8 @@ option_list = list(
                 help="Path to file of expresion covariates"),
         make_option("--tissue", action="store",default=NA, type='character',
                 help="tissue for analysis"),
-		make_option("--num_PCs", action = 'store', default = 10, type = 'numeric',
-		    	help = 'number of gene expression PCs to regress out'),
+		make_option("--covariate_columns_for_coexpression", action = 'store', default = NA, type = 'character',
+		    	help = 'column names of covariate file to keep for regressing on expression for coexpression analysis'),
 		make_option("--gene_info", action="store",default=NA, type='character',
 				help="file containg gene info such as gene id, gene name, start, chromosome, and gene type")
   )
@@ -25,7 +25,7 @@ tissue = opt$tissue
 print(tissue)
 
 gene_expression = fread(opt$expression,header = T)
-covar = fread(opt$covar, header = T)
+covar = fread(opt$covariates, header = T)
 
 individuals = fread(opt$individuals,header = F)
 individual_ids = individuals$V1
@@ -40,10 +40,10 @@ residual_gene_expression = matrix(nrow = nrow(gene_expression), ncol = ncol(gene
 colnames(residual_gene_expression) = unlist(individual_ids)
 rownames(residual_gene_expression) = t(gene_ids)
 
-PC_column = 7 + opt$num_PCs
+covariate_cols = unlist(strsplit(opt$covariate_columns_for_coexpression, "\\s+"))
 print("Regressing covariates now")
 for (row in 1:nrow(gene_expression)) {
-	reg = summary(lm( as.matrix(t(gene_expression[row,])) ~ as.matrix(covar[,c(3:..PC_column,68:70)]) ))
+	reg = summary(lm( as.matrix(t(gene_expression[row,])) ~ as.matrix(covar[,..covariate_cols]) ))
   	residual_gene_expression[row,] = scale(reg$residuals) # scaled residuals
 }
 

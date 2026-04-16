@@ -35,7 +35,11 @@ for (fold in 0:opt$folds) {
 
   genes_in_module = fread(module_path, header = FALSE)
 
-  for (chr in 1:22) {
+  # determine number of chromosomes
+  bim_file = fread(paste0(opt$output_dir,"/genotype_files/",opt$genotype_prefix,".bim"), header = F, sep = '\t')
+  number_chr = max(bim_file$V1)
+
+  for (chr in 1:number_chr) {
     module_name = strsplit(module, "\\..")[[1]][1]
     result_file = file.path(base_dir, "transPCO", tissue, paste0("fold_", fold), "association_results",
                            paste0(module_name, "_chr_", chr, ".txt.gz"))

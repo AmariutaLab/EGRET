@@ -25,8 +25,9 @@ plink_path=${10}
 expression_file_path=${11}
 fold=${12}
 gene_info_file_path=${13}
+scripts_dir=${14}
 
-Rscript 12.4_make_xtune_bed_no_cross_mappable_by_fold.R \
+Rscript ${scripts_dir}/12.4_make_xtune_bed_no_cross_mappable_by_fold.R \
     --tissue "$tissue" \
     --base_dir "$output_dir" \
     --MatrixeQTL_bed_dir "$MatrixeQTL_bed_dir" \

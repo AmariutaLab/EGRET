@@ -13,19 +13,20 @@ source ~/.bashrc
 conda activate transTWAS_env
 
 home_dir="/expanse/lustre/projects/ddp412/kbrunton/EGRET"
+scripts_dir="${home_dir}/scripts"
 tissue="Whole_Blood"
 
-genotypes_file_path="../../../tamariutabartell/gtex/GTEx_v8_genotype_EUR_HM3_exclude_dups.allchr.reorder"
-expression_file_path="../../../tamariutabartell/gtex/${tissue}.v8.normalized_expression.bed.gz"
-individuals_file_path="../../TWAS_across_tissues/individuals_per_tissue/${tissue}_individuals.txt"
-covariates_file_path="../../../tamariutabartell/o2_files/gtex_covars/Covar_all_${tissue}.txt"
+genotypes_file_path="/expanse/lustre/projects/ddp412/tamariutabartell/gtex/GTEx_v8_genotype_EUR_HM3_exclude_dups.allchr.reorder"
+expression_file_path="/expanse/lustre/projects/ddp412/tamariutabartell/gtex/${tissue}.v8.normalized_expression.bed.gz"
+individuals_file_path="/expanse/lustre/projects/ddp412/kbrunton/TWAS_across_tissues/individuals_per_tissue/${tissue}_individuals.txt"
+covariates_file_path="/expanse/lustre/projects/ddp412/tamariutabartell/o2_files/gtex_covars/Covar_all_${tissue}.txt"
 LD_prune_r2="0.9"
-plink_path="../plink2"
+plink_path="${home_dir}/plink2"
 genotype_output_prefix="GTEX_v8_genotypes_pruned"
 folds="5"
-gene_info_file_path="../../data/GTEx_V8.txt.gz"
+gene_info_file_path="/expanse/lustre/projects/ddp412/kbrunton/data/GTEx_V8.txt.gz"
 FDR="0.1"
-num_PCs="10"
+covariate_columns_for_coexpression="PC1 PC2 PC3 PC4 PC5 InferredCov1 InferredCov2 InferredCov3 InferredCov4 InferredCov5 InferredCov6 InferredCov7 InferredCov8 InferredCov9 InferredCov10 pcr     platform sex"
 models="lasso,enet,blup,xtune"
 output_dir="test_output/"
 MatrixeQTL_bed_dir="results_FDR_${FDR}"
@@ -33,7 +34,7 @@ GBAT_bed_dir="results_FDR_${FDR}"
 transPCO_bed_dir="bed_files_FDR_${FDR}"
 egret_output_subdir="EGRET"
 fusion_models="xtune,lasso,enet,blup"
-gemma_path="./gemma-0.98.5-linux-static-AMD64"
+gemma_path="${scripts_dir}/gemma-0.98.5-linux-static-AMD64"
 chunk_size=500
 gwas_sumstat_dir="/expanse/lustre/projects/ddp412/kbrunton/TCSC/sumstats"
 ld_ref="/expanse/lustre/projects/ddp412/kbrunton/fusion_twas-master/LDREF/1000G.EUR.merged"
@@ -45,7 +46,7 @@ gwas_sumstats=("PASS_IBD_deLange2017.sumstats.gz")
 gwas_sumstats_csv=$(IFS=','; echo "${gwas_sumstats[*]}")
 
 if false ; then
-./setup_genotype_and_expression.sh \
+${scripts_dir}/setup_genotype_and_expression.sh \
     $genotypes_file_path \
     $expression_file_path \
     $covariates_file_path \
@@ -56,18 +57,20 @@ if false ; then
     $genotype_output_prefix \
     $folds \
     $gene_info_file_path \
-    $output_dir
+    $output_dir \
+    $scripts_dir
 
-./MatrixeQTL_scripts.sh \
+${scripts_dir}/MatrixeQTL_scripts.sh \
     $tissue \
     $FDR \
     $folds \
     $gene_info_file_path \
     $genotype_output_prefix \
-    $output_dir
+    $output_dir \
+    $scripts_dir
 
 cis_model_dir="${home_dir}/FUSION/${tissue}/cis/"
-./GBAT_scripts.sh \
+${scripts_dir}/GBAT_scripts.sh \
     $tissue \
     $FDR \
     $folds \
@@ -75,19 +78,22 @@ cis_model_dir="${home_dir}/FUSION/${tissue}/cis/"
     $cis_model_dir \
     $plink_path \
     $genotypes_file_path \
-    $output_dir
+    $output_dir \
+    $scripts_dir
 
 
-./transPCO_scripts.sh \
+${scripts_dir}/transPCO_scripts.sh \
     $tissue \
     $folds \
     $FDR \
-    $num_PCs \
+    "$covariate_columns_for_coexpression" \
     $gene_info_file_path \
     $plink_path \
-    $output_dir
+    $output_dir \
+    $genotype_output_prefix \
+    $scripts_dir
 
-./train_EGRET_models.sh \
+${scripts_dir}/train_EGRET_models.sh \
     $tissue \
     $folds \
     $models \
@@ -103,21 +109,24 @@ cis_model_dir="${home_dir}/FUSION/${tissue}/cis/"
     $fusion_models \
     $gemma_path \
     $chunk_size \
-    $gene_info_file_path
+    $gene_info_file_path \
+    $scripts_dir
 
 
-sbatch run_EGRET_model_analysis.sh \
+sbatch ${scripts_dir}/run_EGRET_model_analysis.sh \
     $tissue \
-    EGRET \
-    $output_dir
+    $egret_output_subdir \
+    $output_dir \
+    $scripts_dir
 
 fi
 
-./run_TWAS_scripts.sh \
+${scripts_dir}/run_TWAS_scripts.sh \
     $tissue \
     $output_dir \
     $gene_info_file_path \
     $gwas_sumstat_dir \
     $ld_ref \
     $egret_output_subdir \
-    $gwas_sumstats_csv
+    $gwas_sumstats_csv \
+    $scripts_dir

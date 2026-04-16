@@ -11,8 +11,9 @@ genotype_output_prefix=$8  # prefix which to store genotypes by
 folds=$9                   # number of folds for crossvalidation
 gene_info_file_path=${10}  # file containing gene info such as gene id, gene name, chr, and start location
 output_dir=${11}           # directory where output files will be stored
+scripts_dir=${12}          # directory where scripts are located
 
-Rscript 0_setup_genotypes.R \
+Rscript ${scripts_dir}/0_setup_genotypes.R \
 	--plink_path $plink_path \
 	--bfile $genotypes_file_path \
 	--LD_r2 $LD_prune_r2 \
@@ -20,7 +21,7 @@ Rscript 0_setup_genotypes.R \
 	--LD_window 100 \
 	--out ${output_dir}/genotype_files/${genotype_output_prefix}
 
-Rscript 1_setup_expression.R \
+Rscript ${scripts_dir}/1_setup_expression.R \
 	--expression $expression_file_path \
 	--individuals  $individuals_file_path \
 	--covariates  $covariates_file_path \
@@ -28,9 +29,9 @@ Rscript 1_setup_expression.R \
 	--gene_info $gene_info_file_path \
 	--output_dir $output_dir
 
-Rscript 2_setup_folds.R \
+Rscript ${scripts_dir}/2_setup_folds.R \
 	--expression $output_dir/expression_files/${tissue}_expression_regressed.txt.gz \
-	--folds 5 \
+	--folds $folds \
 	--tissue ${tissue} \
 	--individuals $individuals_file_path \
 	--plink_path $plink_path \

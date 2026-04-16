@@ -29,17 +29,16 @@ for (fold in 0:5) {
 	output_dir = paste0(opt$output_dir,"/GBAT/",tissue,"/fold_",fold,"/results_FDR_",opt$FDR,"/")
 	dir.create(output_dir)
  	association_results = fread(paste0(opt$output_dir,"/GBAT/",tissue,"/fold_",fold,"/association_results.txt"),header = T)
-        if (nrow(association_results) == 0 ) { next }
-
-        unique_genes = unique(association_results$gene)
+    if (nrow(association_results) == 0 ) { next }
+	unique_genes = unique(association_results$gene)
 	largest_sig_pval = c()
-        for (gene_name in unique_genes) {
-		#print(gene_name)
-                subset = association_results[gene == gene_name,]
-		
+	for (gene_name in unique_genes) {
+		print(gene_name)
+		subset = association_results[gene == gene_name,]
+
 		subset$new_FDR = p.adjust(subset$'p-value',n = nrow(genes), method = 'fdr')
-                subset = subset[subset$new_FDR < opt$FDR,]
-                largest_sig_pval = c(largest_sig_pval, subset$'p-value'[nrow(subset)])
+		subset = subset[subset$new_FDR < opt$FDR,]
+		largest_sig_pval = c(largest_sig_pval, subset$'p-value'[nrow(subset)])
 		if (nrow(subset) == 0) {
 			next
 		}
@@ -50,22 +49,21 @@ for (fold in 0:5) {
 		sig_snps = data.table(snps = character(), pvals = numeric())
 		for (row in 1:nrow(subset)) {
 			if (subset$SNP[row] == gene_name) { next }
-                   	#print(subset$SNP[row])
-		   	trans_gene_info = all_gene_info[all_gene_info$geneId %in% subset$SNP[row]]
+			trans_gene_info = all_gene_info[all_gene_info$geneId %in% subset$SNP[row]]
 			trans_gene_chr = trans_gene_info$'#chrom'
 			trans_gene_start = trans_gene_info$chromStart
-			if ( (gene_chr == trans_gene_chr) & abs(gene_start - trans_gene_start) < 500000) {
-				next
-			}
+
+			if ( (gene_chr == trans_gene_chr) & abs(gene_start - trans_gene_start) < 500000) { next }
+			
 			load(paste0(opt$cis_model_dir,subset$SNP[row],".wgt.RDat"))
 			snps = snps$V2[wgt.matrix[,colnames(wgt.matrix) == "lasso"] != 0]
 			pvals = rep(subset$'p-value'[row],length(snps))
 			sig_snps = rbind(sig_snps,data.table(snps,pvals))
 		}
-                if (nrow(sig_snps) == 0) {next}
+		if (nrow(sig_snps) == 0) {next}
 		sig_snps = as.matrix(sig_snps)
 		fwrite(sig_snps,paste0(output_dir,gene_name,".txt"),row.names = F, col.names = F, quote = F, sep = '\t')
-        }
+    }
 	print(mean(largest_sig_pval, na.rm = T))
 }
 

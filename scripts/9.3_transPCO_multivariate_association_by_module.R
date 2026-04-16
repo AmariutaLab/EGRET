@@ -1,13 +1,6 @@
 library(data.table)
 library(optparse)
 
-source("ModifiedPCOMerged.R")
-source("ModifiedSigmaOEstimate.R")
-source("davies.R")
-source("liumod.R")
-source("liu.R")
-dyn.load("qfc.so")
-
 # Define and parse command-line options
 option_list = list(
   make_option("--tissue", action = "store", default = NA, type = 'character',
@@ -25,10 +18,21 @@ option_list = list(
   make_option("--folds", action = "store", default = 5, type = 'integer',
               help = "Number of cross-validation folds (iterates fold_0 through fold_N)"),
   make_option("--gene_info", action = "store", default = NA, type = 'character',
-              help = "Path to gene info file (e.g. GTEx_V8.txt.gz)")
+              help = "Path to gene info file (e.g. GTEx_V8.txt.gz)"),
+  make_option("--scripts_dir", action = "store", default = NA, type = 'character',
+              help = "Directory containing helper R scripts and shared libraries")
 )
 
 opt = parse_args(OptionParser(option_list = option_list))
+
+scripts_dir = opt$scripts_dir
+source(file.path(scripts_dir, "ModifiedPCOMerged.R"))
+source(file.path(scripts_dir, "ModifiedSigmaOEstimate.R"))
+source(file.path(scripts_dir, "davies.R"))
+source(file.path(scripts_dir, "liumod.R"))
+source(file.path(scripts_dir, "liu.R"))
+dyn.load(file.path(scripts_dir, "qfc.so"))
+
 tissue = opt$tissue
 module = opt$module
 module_dir = opt$module_dir
