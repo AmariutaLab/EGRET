@@ -8,6 +8,8 @@ egret_output_subdir=$6
 gwas_sumstats_csv=$7
 scripts_dir=$8
 
+if false ; then
+
 # Create pos files
 Rscript ${scripts_dir}/16.5_create_EGRET_pos.R \
     --tissue $tissue \
@@ -15,6 +17,7 @@ Rscript ${scripts_dir}/16.5_create_EGRET_pos.R \
     --gene_info_file_path $gene_info_file_path
 
 
+fi
 # Set pos file and weights directory
 wgt=${output_dir}/pos_files/${tissue}/EGRET.pos
 wgtdir=${output_dir}/xtune_fusion_models/${tissue}/EGRET/

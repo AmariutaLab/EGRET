@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="Running TWAS"
-#SBATCH --output="/expanse/lustre/scratch/kbrunton/temp_project/batch_submission_output/TWAS_output/%j.%N.out"
+#SBATCH --output="batch_submissions/TWAS_output_%j.%N.out"
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -25,10 +25,10 @@ chr=1  # doesn't matter if using trans script
 
 mkdir -p $out_dir
 
-if [ -f "${out_dir}/${trait}.dat" ]; then
-    echo "Output already exists for ${trait}, skipping"
-    exit 0
-fi
+#if [ -f "${out_dir}/${trait}.dat" ]; then
+#    echo "Output already exists for ${trait}, skipping"
+#    exit 0
+#fi
 
 Rscript ${scripts_dir}/FUSION.assoc_test_trans.R \
     --chr $chr \

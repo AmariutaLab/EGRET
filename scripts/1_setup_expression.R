@@ -21,6 +21,7 @@ opt = parse_args(OptionParser(option_list=option_list))
 tissue = opt$tissue
 
 expression_file = fread(opt$expression, header = TRUE)
+
 individuals = fread(opt$individuals, header = FALSE)
 individuals = unlist(individuals$V1)
 

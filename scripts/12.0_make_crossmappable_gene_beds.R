@@ -24,32 +24,45 @@ cross_mappable_genes = fread(opt$crossmap_file, header = FALSE)
 
 focal_genes = unique(cross_mappable_genes$V2)
 
-out_dir = file.path(opt$output_dir, "cross_mapped", "background_mismatches")
+out_dir = file.path(opt$output_dir, "cross_mapped", "background_mismatches_new")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 num_cross_mapped_genes = length(focal_genes)
 
+# Strip "chr" prefix once for all rows (vectorised)
+all_gene_info[, chr := sub("^chr", "", `#chrom`)]
+
+# what share of crossmappable genes are mapped to this gene (computed once per focal gene)
+cross_mappable_genes[, bg := sum(V3) / num_cross_mapped_genes, by = V2]
+kept = cross_mappable_genes[V3 > bg]
+
+# Key both tables so per-gene subsets are O(log n) binary-search lookups
+setkey(kept, V2)
+setkey(all_gene_info, geneId)
+
 for (gene in focal_genes) {
   print(gene)
-  gene_rows = cross_mappable_genes[cross_mappable_genes$V2 == gene, ]
-  background_mappability = sum(gene_rows$V3) / num_cross_mapped_genes
 
-  print(background_mappability)
-  gene_rows = gene_rows[gene_rows$V3 > background_mappability, ]
+  #check if output file already exists
+  if (file.exists(file.path(out_dir, paste0(gene, ".bed")))) {next}
+
+  gene_rows = kept[.(gene), nomatch = NULL]
   if (nrow(gene_rows) == 0) next
 
-  focal_gene_info = all_gene_info[all_gene_info$geneId == gene, ]
+  print(gene_rows$bg[1])
+
+  focal_gene_info = all_gene_info[.(gene), nomatch = NULL]
   if (nrow(focal_gene_info) == 0) next
 
-  crossmap_gene_info = all_gene_info[all_gene_info$geneId %in% gene_rows$V1, c('#chrom', 'chromStart', 'geneId')]
+  crossmap_gene_info = all_gene_info[.(gene_rows$V1),
+                                     .(`#chrom`, chromStart, geneId, chr),
+                                     nomatch = NULL]
 
   crossmap_gene_info = crossmap_gene_info[
-    crossmap_gene_info$'#chrom' != focal_gene_info$'#chrom' |
-    crossmap_gene_info$chromStart < focal_gene_info$chromStart - opt$cis_window |
-    crossmap_gene_info$chromStart > focal_gene_info$chromStart + opt$cis_window, ]
+    `#chrom` != focal_gene_info$`#chrom` |
+    chromStart < focal_gene_info$chromStart - opt$cis_window |
+    chromStart > focal_gene_info$chromStart + opt$cis_window, ]
 
   if (nrow(crossmap_gene_info) == 0) next
-
-  crossmap_gene_info$chr = sapply(strsplit(as.character(crossmap_gene_info$'#chrom'), "chr"), function(x) x[2])
 
   bed_start = pmax(0, crossmap_gene_info$chromStart - opt$crossmap_window)
   bed_end   = crossmap_gene_info$chromStart + opt$crossmap_window

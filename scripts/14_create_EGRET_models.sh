@@ -49,6 +49,17 @@ for gene in $(ls ${plink_dir}/fold_0/ | grep .bed | head -n $end_index | tail -n
 do
 gene=${gene::-4}
 
+# Skip genes missing plink output in any fold — prevents downstream R segfaults
+skip=0
+for i in $(seq 0 $folds); do
+    if [ ! -s "${plink_dir}/fold_$i/${gene}.bed" ]; then
+        echo "Skipping $gene: missing ${plink_dir}/fold_$i/${gene}.bed"
+        skip=1
+        break
+    fi
+done
+[ $skip -eq 1 ] && continue
+
 #Extracting gene expression information
 gefile="$expression_file_path"
 individuals="${base_dir}/fold_0_info/${tissue}/train_individuals.txt"

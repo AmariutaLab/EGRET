@@ -133,9 +133,10 @@ for (gene in genes) {
 	plink_output_dir = paste0(base_dir, "/plink_results/",tissue,"/",output_dir,"/fold_",fold,"/")
 	dir.create(plink_output_dir,recursive = T)
 
-	if(file.exists(paste0(base_dir, "/bed_files/cross_mapped/",crossmap_dir,"/",gene)) & opt$exclude_crossmap) {
+	crossmap_bed_path = paste0(base_dir, "/cross_mapped/",crossmap_dir,"/",gene,".bed")
+	if(file.exists(crossmap_bed_path) & opt$exclude_crossmap) {
 		print("exluding cross mappable genes")
-		arg = paste0(opt$plink_path, " --bfile ", base_dir, "/genotype_files/", opt$genotype_prefix, " --extract bed1 ",bed_file_dir,gene, " --make-bed --exclude bed1 ", base_dir, "/bed_files/cross_mapped/",crossmap_dir,"/",gene, " --out ",plink_output_dir,gene_name)
+		arg = paste0(opt$plink_path, " --bfile ", base_dir, "/genotype_files/", opt$genotype_prefix, " --extract bed1 ",bed_file_dir,gene, " --make-bed --exclude bed1 ", crossmap_bed_path, " --out ",plink_output_dir,gene_name)
 	} else {
 		print("no cross mappable genes to exlude")
 		arg = paste0(opt$plink_path, " --bfile ", base_dir, "/genotype_files/", opt$genotype_prefix, " --extract bed1 ",bed_file_dir,gene, " --make-bed --out ",plink_output_dir,gene_name)
