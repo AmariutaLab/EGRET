@@ -22,6 +22,8 @@ individuals_file_path="/expanse/lustre/projects/ddp412/kbrunton/TWAS_across_tiss
 covariates_file_path="/expanse/lustre/projects/ddp412/tamariutabartell/o2_files/gtex_covars/Covar_all_${tissue}.txt"
 LD_prune_r2="0.9"
 plink_path="${home_dir}/plink2"
+plink1_path="/expanse/lustre/projects/ddp412/kbrunton/plink"
+gcta_path="/expanse/lustre/projects/ddp412/kbrunton/fusion_twas-master/gcta_nr_robust"
 genotype_output_prefix="GTEX_v8_genotypes_pruned"
 folds="5"
 gene_info_file_path="/expanse/lustre/projects/ddp412/kbrunton/data/GTEx_V8.txt.gz"
@@ -38,6 +40,7 @@ gemma_path="${scripts_dir}/gemma-0.98.5-linux-static-AMD64"
 chunk_size=500
 gwas_sumstat_dir="/expanse/lustre/projects/ddp412/kbrunton/TCSC/sumstats"
 ld_ref="/expanse/lustre/projects/ddp412/kbrunton/fusion_twas-master/LDREF/1000G.EUR.merged"
+crossmap_file="cross_mappability.tsv.gz"  # only used if regenerating cross-mappable beds (e.g. non-hg38)
 
 gwas_sumstats=("PASS_IBD_deLange2017.sumstats.gz" "PASS_Rheumatoid_Arthritis.sumstats.gz" "UKB_460K.blood_PLATELET_COUNT.sumstats.gz" "UKB_460K.blood_RBC_DISTRIB_WIDTH.sumstats.gz" "UKB_460K.blood_RED_COUNT.sumstats.gz" "UKB_460K.blood_WHITE_COUNT.sumstats.gz" "UKB_460K.disease_ALLERGY_ECZEMA_DIAGNOSED.sumstats.gz" "UKB_460K.disease_HYPOTHYROIDISM_SELF_REP.sumstats.gz" "PASS_AtrialFibrillation_Nielsen2018.sumstats.gz" "PASS_HDL.sumstats.gz" "PASS_IschemicStroke_Malik2018.sumstats.gz" "PASS_LDL.sumstats.gz" "UKB_460K.biochemistry_Cholesterol.sumstats.gz" "UKB_460K.body_BMIz.sumstats.gz" "UKB_460K.bp_DIASTOLICadjMEDz.sumstats.gz" "PASS_ADHD_Demontis2018.sumstats.gz" "PASS_Alzheimers_deRojas2021.sumstats.gz" "PASS_Autism.sumstats.gz" "PASS_Schizophrenia_Pardinas2018.sumstats.gz" "PASS_AnorexiaNervosa_Watson2019.sumstats.gz" "UKB_460K.cov_EDU_YEARS.sumstats.gz" "UKB_460K.lung_FVCzSMOKE.sumstats.gz" "PASS_Intelligence_SavageJansen2018.sumstats.gz" "UKB_460K.mental_NEUROTICISM.sumstats.gz" "UKB_460K.body_HEIGHTz.sumstats.gz" "UKB_460K.other_MORNINGPERSON.sumstats.gz" "UKB_460K.repro_MENARCHE_AGE.sumstats.gz" "UKB_460K.biochemistry_TotalProtein.sumstats.gz" "UKB_460K.body_WHRadjBMIz.sumstats.gz" "UKB_460K.lung_FEV1FVCzSMOKE.sumstats.gz" "PASS_ReactionTime_Davies2018.sumstats.gz" "PASS_Myopia_Hysi2020.sumstats.gz" "UKB_460K.biochemistry_Creatinine.sumstats.gz" "UKB_460K.bmd_HEEL_TSCOREz.sumstats.gz" "PASS_SleepDuration_Dashti2019.sumstats.gz" "UKB_460K.biochemistry_IGF1.sumstats.gz" "PASS_GeneralRiskTolerance_KarlssonLinner2019.sumstats.gz" "PASS_Eosino_Vuckovic2020.sumstats.gz" "UKB_460K.biochemistry_AspartateAminotransferase.sumstats.gz" "PASS_Insomnia_Jansen2019.sumstats.gz" "PASS_Height1.sumstats.gz" "PASS_LymP_Vuckovic2020.sumstats.gz" "UKB_460K.repro_NumberChildrenEverBorn_Pooled.sumstats.gz" "UKB_460K.biochemistry_Testosterone_Male.sumstats.gz" "PASS_BMI1.sumstats.gz" "PASS_AgeFirstBirth.sumstats.gz" "PASS_Glaucoma_Craig2020.sumstats.gz" "PASS_RTC_Vuckovic2020.sumstats.gz" "UKB_460K.body_BALDING1.sumstats.gz" "UKB_460K.biochemistry_AlkalinePhosphatase.sumstats.gz" "PASS_DrinksPerWeek_Liu2019.sumstats.gz" "UKB_460K.biochemistry_Phosphate.sumstats.gz" "PASS_MedicationUse_Wu2019.sumstats.gz" "UKB_460K.biochemistry_VitaminD.sumstats.gz" "PASS_MDD_Wray2018.sumstats.gz" "PASS_RD_Zhao2021.sumstats.gz" "PASS_MonoP_Vuckovic2020.sumstats.gz" "UKB_460K.biochemistry_TotalBilirubin.sumstats.gz" "UKB_460K.repro_MENOPAUSE_AGE.sumstats.gz" "PASS_SA_Grasby2020.sumstats.gz" "PASS_HipOA_Tachmazidou2019.sumstats.gz" "UKB_460K.pigment_SUNBURN.sumstats.gz" "PASS_NumberChildrenEverBorn.sumstats.gz" "PASS_BipolarDisorder_Ruderfer2018.sumstats.gz" "PASS_Years_of_Education1.sumstats.gz" "PASS_PancreasVol_Liu2021.sumstats.gz" "PASS_CaudateVol_Satizabal2019.sumstats.gz" "PASS_BrainstemVol_Satizabal2019.sumstats.gz" "PASS_TH_Grasby2020.sumstats.gz" "PASS_BasoP_Vuckovic2020.sumstats.gz" "PASS_Anorexia.sumstats.gz" "PASS_Ever_Smoked.sumstats.gz" "PASS_MO_Zhao2021.sumstats.gz" "PASS_ProstateCancer.sumstats.gz" "UKB_460K.cancer_PROSTATE.sumstats.gz" "PASS_AccumbensVol_Satizabal2019.sumstats.gz" "UKB_460K.cancer_BREAST.sumstats.gz" "PASS_Type_2_Diabetes.sumstats.gz" "PASS_BipolarDisorder_Ruderfer2018.sumstats.gz")
 
@@ -58,6 +61,20 @@ ${scripts_dir}/setup_genotype_and_expression.sh \
     $folds \
     $gene_info_file_path \
     $output_dir \
+    $scripts_dir
+
+${scripts_dir}/run_cis_models.sh \
+    $tissue \
+    $output_dir \
+    $plink_path \
+    $gene_info_file_path \
+    $genotype_output_prefix \
+    $individuals_file_path \
+    $covariates_file_path \
+    $plink1_path \
+    $gcta_path \
+    $gemma_path \
+    $chunk_size \
     $scripts_dir
 
 ${scripts_dir}/MatrixeQTL_scripts.sh \
@@ -93,6 +110,13 @@ ${scripts_dir}/transPCO_scripts.sh \
     $genotype_output_prefix \
     $scripts_dir
 
+# Optional: regenerate cross-mappable bed files. Only needed if working with a non-hg38
+# genome build; hg38 cross-mappable beds are bundled in the repo.
+# Rscript ${scripts_dir}/12.0_make_crossmappable_gene_beds.R \
+#     --gene_info $gene_info_file_path \
+#     --crossmap_file $crossmap_file \
+#     --output_dir $output_dir
+
 ${scripts_dir}/train_EGRET_models.sh \
     $tissue \
     $folds \
@@ -122,6 +146,17 @@ sbatch ${scripts_dir}/run_EGRET_model_analysis.sh \
 fi
 
 ${scripts_dir}/run_TWAS_scripts.sh \
+    $tissue \
+    $output_dir \
+    $gene_info_file_path \
+    $gwas_sumstat_dir \
+    $ld_ref \
+    $egret_output_subdir \
+    $gwas_sumstats_csv \
+    $scripts_dir
+
+# Cis-only TWAS (uses cis weights from FUSION) — useful as a baseline against the full EGRET TWAS.
+${scripts_dir}/run_TWAS_cis_scripts.sh \
     $tissue \
     $output_dir \
     $gene_info_file_path \
