@@ -19,6 +19,7 @@ folds=$4
 expected_module_count=$5
 scripts_dir=$6
 genotype_prefix=$7
+cleanup_transpco_raw=${8:-"FALSE"}
 
 # Verify PCO output files exist before running results analysis
 total_found=0
@@ -54,3 +55,9 @@ Rscript ${scripts_dir}/11_transPCO_results_analysis_by_FDR.R \
     --PCO_association_dir PCO_association_results \
     --module_dir modules \
     --genotype_prefix $genotype_prefix
+
+# Hook D: drop raw per-fold PCO_association_results once final FDR analysis has consumed them
+if [[ "$cleanup_transpco_raw" == "TRUE" ]]; then
+    echo "Removing transPCO/${tissue}/fold_*/PCO_association_results/ (cleanup_transpco_raw=TRUE)"
+    rm -rf ${output_dir}/transPCO/${tissue}/fold_*/PCO_association_results/
+fi

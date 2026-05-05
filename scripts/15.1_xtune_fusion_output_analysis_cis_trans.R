@@ -17,7 +17,7 @@ tissue = opt$tissue
 
 project = opt$project
 output_dir = opt$output_dir
-genes = list.files(paste0(output_dir,"/xtune_fusion_models/",tissue,"/",project,"/"))
+genes = list.files(paste0(output_dir,"/EGRET_models/",tissue,"/",project,"/"))
 
 results = data.frame(gene = as.character(),  r2_gw = as.numeric(),p_gw = as.numeric(), r2_cis_part = as.numeric(),p_cis_part = as.numeric(), r2_trans_part = as.numeric(), p_trans_part = as.numeric(),best_model = as.character())
 
@@ -26,8 +26,8 @@ for (gene in unlist(genes)) {
 	gene = substr(gene, 1, nchar(gene) - 9)
 	print(gene)
 
-	if (file.exists(paste0(output_dir,"/xtune_fusion_models/",tissue,"/",project,"/",gene,".wgt.RDat"))) {
-                load(paste0(output_dir,"/xtune_fusion_models/",tissue,"/",project,"/",gene,".wgt.RDat"))
+	if (file.exists(paste0(output_dir,"/EGRET_models/",tissue,"/",project,"/",gene,".wgt.RDat"))) {
+                load(paste0(output_dir,"/EGRET_models/",tissue,"/",project,"/",gene,".wgt.RDat"))
 		gw_best = which.max(ifelse(is.na(cv.performance_gw[1,]), 0, cv.performance_gw[1,]))
 		r2_gw = cv.performance_gw[1,gw_best]
 		p_gw = cv.performance_gw[2,gw_best]

@@ -21,6 +21,7 @@ plink1_path=$8
 gcta_path=$9
 gemma_path=${10}
 scripts_dir=${11}
+cleanup_cis_working=${12:-"FALSE"}
 
 if [ -n "$tissue" ]; then
     echo $tissue
@@ -62,4 +63,8 @@ do
 
 	Rscript ${scripts_dir}/FUSION.compute_weights.R --bfile $wd/${gene} --crossval 5 --models lasso,blup,enet,top1 --hsq_p 1 --tmp $TMP --out $OUT --covar $covar --PATH_gcta ${gcta_path} --PATH_plink ${plink1_path} --PATH_gemma ${gemma_path} --noclean FALSE
 
+	# Hook A: drop per-gene FUSION working/tmp files once the cis weight is written
+	if [[ "$cleanup_cis_working" == "TRUE" && -f "$OUT.wgt.RDat" ]]; then
+		rm -rf $wd/${gene}.* $tmpdir/${gene}*
+	fi
 done

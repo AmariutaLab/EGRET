@@ -26,6 +26,7 @@ expression_file_path=${11}
 fold=${12}
 gene_info_file_path=${13}
 scripts_dir=${14}
+cleanup_matrixeqtl_raw=${15:-"FALSE"}
 
 Rscript ${scripts_dir}/12.4_make_xtune_bed_no_cross_mappable_by_fold.R \
     --tissue "$tissue" \
@@ -42,3 +43,9 @@ Rscript ${scripts_dir}/12.4_make_xtune_bed_no_cross_mappable_by_fold.R \
     --models Cis,MatrixeQTL,GBAT,transPCO \
     --fold "$fold" \
     --gene_information "$gene_info_file_path"
+
+# Hook C: drop raw MatrixeQTL .txt assoc files once bed extraction for this fold is done
+if [[ "$cleanup_matrixeqtl_raw" == "TRUE" ]]; then
+    echo "Removing raw MatrixeQTL .txt for ${tissue}/fold_${fold} (cleanup_matrixeqtl_raw=TRUE)"
+    find ${output_dir}/MatrixeQTL/${tissue}/fold_${fold} -maxdepth 1 -type f -name '*.txt' -delete
+fi

@@ -11,8 +11,6 @@ option_list = list(
         help="location where bed/bim/fam files are stored"),
   make_option("--models", action="store", default=NA, type='character',
         help="Comma-separated list of prediction models"),
-  make_option("--output_dir", action="store", default=NA, type='character',
-        help="Path to output files"),
   make_option("--weights_dir",action ='store',default=NA,type='character',
   	help="path to weights dir"),
   make_option("--tissue",action = 'store',default=NA,type='character',
@@ -126,7 +124,7 @@ weights.marginal = function( genos , pheno , beta=F ) {
 #clean up function
 cleanup = function() {
         if (opt$clean ) {
-                arg = paste("rm -f " , opt$working_dir , "*", sep='')
+                arg = paste0("rm -rf ", opt$working_dir, "/*")
                 system(arg)
         }
 }
@@ -169,7 +167,10 @@ print('here')
 #new stuff to do cis/trans analysis
 all_gene_info = fread(opt$gene_info_file, header = T)
 print('here2')
-gene_info = all_gene_info[grep(opt$gene, all_gene_info$geneId),]
+gene_info = all_gene_info[all_gene_info$geneId == opt$gene,]
+if (nrow(gene_info) != 1) {
+    stop(sprintf("Expected exactly 1 row for gene %s in gene_info_file; found %d", opt$gene, nrow(gene_info)))
+}
 u_bound = max(0,gene_info$chromStart - 2500000)
 l_bound = gene_info$chromStart + 2500000
 chr = strsplit(gene_info$'#chrom','chr')[[1]][2]
@@ -189,8 +190,8 @@ for (fold in 1:num_folds) {
                 m.keep = !is.na(m)
                 pheno = pheno[m.keep,]
                 m = m[m.keep]
-                covar = covar[m,]
-                reg = summary(lm(as.matrix(pheno[,3]) ~ as.matrix(covar[,3:ncol(covar)]) ))
+                covar_fold = covar[m,]
+                reg = summary(lm(as.matrix(pheno[,3]) ~ as.matrix(covar_fold[,3:ncol(covar_fold)]) ))
                 pheno[,3] = scale(reg$resid)
                 pheno[,3] = scale(pheno[,3])   #is this necessary?? Should we scale just the train portion separately
 
@@ -273,12 +274,8 @@ for ( mod in 1:M ) {
                 cv.performance[ 1, mod ] = NA
                 cv.performance[ 2, mod ] = NA
         }
-	wgt.matrix[,mod] = pred.wgt
 }
 
-#no longer write the results
-#write.table(cv.performance,paste0(opt$output_dir,"/",opt$gene,".txt"),quote=F,sep='\t')
-#new
 for ( mod in 1:M ) {
         if ( !is.na(sd(cv.calls_cis[which(!is.na(cv.calls_cis[,mod])),mod])) && sd(cv.calls_cis[which(!is.na(cv.calls_cis[,mod])),mod]) != 0 ) {
                 reg = summary(lm( pheno[which(!is.na(cv.calls_cis[,mod])),3] ~ cv.calls_cis[which(!is.na(cv.calls_cis[,mod])),mod] ))
@@ -383,7 +380,6 @@ if (best_model == 2) {
 }
 
 
-write.table(alphas,paste0(opt$output_dir,"/",opt$gene,"_alphas.txt"),row.names = F, col.names = F,quote=F,sep='\t')
 print(paste0("The weight dir is ",opt$weights_dir ,"/",opt$gene, ".wgt.RDat" ))
 save( wgt.matrix , snps , cv.performance,cv.performance_gw,cv.performance_cis, cv.performance_trans,best_model,alphas, file = paste0( opt$weights_dir ,"/",opt$gene, ".wgt.RDat" ) )
 

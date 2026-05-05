@@ -6,26 +6,20 @@ from convert_variant_id_to_rsid import convert_variant_id_to_rsid
 parser = argparse.ArgumentParser()
 parser.add_argument('--tissue', required=True, help='tissue for analysis')
 parser.add_argument('--output_dir', required=True, help='base output directory')
-parser.add_argument('--eqtl_dir', required=True,
-                    help='directory containing GTEx v8 eQTL signif_variant_gene_pairs files')
-parser.add_argument('--bim_file', required=True,
-                    help='genotype .bim file used to map GTEx variant IDs to rsids')
+parser.add_argument('--eqtl_file_path', required=True,
+                    help='file containg eqtl sumstats for specific tissue')
 args = parser.parse_args()
 
 tissue = args.tissue
 output_dir = args.output_dir
-eqtl_dir = args.eqtl_dir
-bim_file = args.bim_file
-
-print(tissue)
-convert_variant_id_to_rsid(tissue, eqtl_dir, bim_file)
+eqtl_file_path = args.eqtl_file_path
 
 trans_connections = pd.read_csv(
     f"{output_dir}/grn_analysis/trans_connections/{tissue}_trans_connections.txt",
     sep='\t'
 )
 eqtl_sumstats = pd.read_csv(
-    f"{eqtl_dir}/{tissue}_with_rsid.txt",
+    f"{eqtl_file_path}",
     sep='\t'
 )
 

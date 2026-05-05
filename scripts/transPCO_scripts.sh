@@ -8,8 +8,9 @@ plink_path=$6
 output_dir=$7
 genotype_prefix=${8:-"GTEX_v8_genotypes_pruned"}
 scripts_dir=${9}
+slurm_log_dir=${10:-""}
+cleanup_transpco_raw=${11:-"FALSE"}
 
-if false ; then
 
 Rscript ${scripts_dir}/9.0_run_WGCNA_clustering.R \
 	--expression ${output_dir}/expression_files/${tissue}_expression.txt.gz \
@@ -44,7 +45,7 @@ echo "Using module list from: $max_module_dir"
 
 job_ids=()
 for file in "$max_module_dir"/*; do
-    jid=$(sbatch --parsable ${scripts_dir}/run_transPCO_matrixeQTL_job.sh \
+    jid=$(sbatch --parsable ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_matrixeQTL.%j.%N.out} ${scripts_dir}/run_transPCO_matrixeQTL_job.sh \
         $tissue \
         $(basename $file) \
         modules \
@@ -73,7 +74,7 @@ modules=$(find ${output_dir}/transPCO/${tissue}/fold_*/modules/ -type f -exec ba
 pco_job_ids=()
 for module in $modules
 do
-    jid=$(sbatch --parsable $dependency ${scripts_dir}/run_transPCO_PCO_association_job.sh \
+    jid=$(sbatch --parsable $dependency ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_PCO_assoc.%j.%N.out} ${scripts_dir}/run_transPCO_PCO_association_job.sh \
         $tissue \
         $module \
         modules \
@@ -86,8 +87,6 @@ do
 done
 echo "Submitted ${#pco_job_ids[@]} PCO association jobs"
 
-#remove for full run
-fi
 
 # Count expected modules for verification
 module_count=$(echo "$modules" | wc -w)
@@ -100,11 +99,12 @@ else
     pco_dependency=""
 fi
 
-sbatch $pco_dependency ${scripts_dir}/run_transPCO_results_analysis_job.sh \
+sbatch $pco_dependency ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_results.%j.%N.out} ${scripts_dir}/run_transPCO_results_analysis_job.sh \
     $tissue \
     $FDR \
     $output_dir \
     $folds \
     $module_count \
     $scripts_dir \
-    $genotype_prefix
+    $genotype_prefix \
+    "$cleanup_transpco_raw"

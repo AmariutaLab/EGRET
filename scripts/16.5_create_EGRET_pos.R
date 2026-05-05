@@ -25,7 +25,7 @@ all_gene_info = fread(gene_info_file_path, header = T)
 sumstats = fread(paste0(output_dir,"/results_sumstats/",tissue,"/EGRET.txt"),header = T)
 sumstats$best_r2_pval = pmin(sumstats$p_gw, sumstats$p_cis_part, sumstats$p_trans_part, na.rm = TRUE)
 print(sumstats)
-wgt_dir = paste0(output_dir,"/xtune_fusion_models/",tissue,"/EGRET/")  
+wgt_dir = paste0(output_dir,"/EGRET_models/",tissue,"/EGRET/")
 
 pos_matrix = data.frame(WGT = as.character(),ID = as.character(),CHR = as.numeric(), P0 = as.numeric(),P1 = as.numeric())
 

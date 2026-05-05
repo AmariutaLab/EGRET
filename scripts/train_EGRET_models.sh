@@ -16,12 +16,16 @@ gemma_path=${14:-"./gemma-0.98.5-linux-static-AMD64"}
 chunk_size=${15:-500}
 gene_info_file_path=${16:-"../../data/GTEx_V8.txt.gz"}
 scripts_dir=${17}
+slurm_log_dir=${18:-""}
+cleanup_egret_plink=${19:-"FALSE"}
+cleanup_egret_working=${20:-"FALSE"}
+cleanup_matrixeqtl_raw=${21:-"FALSE"}
 
 expression_file_path=${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz
 
 bed_job_ids=()
 for fold in $(seq 0 $folds); do
-    jid=$(sbatch --parsable ${scripts_dir}/run_make_EGRET_bed_files.sh \
+    jid=$(sbatch --parsable ${slurm_log_dir:+--output=${slurm_log_dir}/make_EGRET_bed.%j.%N.out} ${scripts_dir}/run_make_EGRET_bed_files.sh \
         "$tissue" \
         "$output_dir" \
         "$MatrixeQTL_bed_dir" \
@@ -35,7 +39,8 @@ for fold in $(seq 0 $folds); do
         "$expression_file_path" \
         "$fold" \
         "$gene_info_file_path" \
-        "$scripts_dir")
+        "$scripts_dir" \
+        "$cleanup_matrixeqtl_raw")
     bed_job_ids+=($jid)
     echo "Submitted bed file job $jid for fold $fold"
 done
@@ -57,8 +62,8 @@ echo "Submitting $num_chunks model chunks"
 for ((i = 0; i < num_chunks; i++)); do
         start_index=$((i * chunk_size))
         end_index=$((start_index + chunk_size - 1))
-        sbatch $dependency ${scripts_dir}/14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
+        sbatch $dependency ${slurm_log_dir:+--output=${slurm_log_dir}/gtex_xtune.%j.%N.out} ${scripts_dir}/14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
             "$output_dir" "$egret_output_subdir" "$folds" "$plink_path" \
             "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path" \
-            "$scripts_dir"
+            "$scripts_dir" "$cleanup_egret_plink" "$cleanup_egret_working"
 done

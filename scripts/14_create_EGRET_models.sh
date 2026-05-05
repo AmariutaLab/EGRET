@@ -22,6 +22,8 @@ expression_file_path=${9:-"expression_files/${tissue}_expression.txt.gz"}
 models=${10:-"xtune,lasso,enet,blup"}
 gene_info_file_path=${11:-"../../data/GTEx_V8.txt.gz"}
 scripts_dir=${12}
+cleanup_egret_plink=${13:-"FALSE"}
+cleanup_egret_working=${14:-"FALSE"}
 
 if [ -n "$tissue" ]; then
     echo $tissue
@@ -33,12 +35,10 @@ fi
 home_dir=/expanse/lustre/projects/ddp412/kbrunton
 
 #Define output directions
-weights="${base_dir}/xtune_fusion_models/${tissue}/${model_config}"
+weights="${base_dir}/EGRET_models/${tissue}/${model_config}"
 mkdir -p "$weights"
 wd="${base_dir}/working/${tissue}/${model_config}"
 mkdir -p "$wd"
-output="${base_dir}/xtune_fusion_results/${tissue}/${model_config}"
-mkdir -p "$output"
 
 z_matrix_dir="${base_dir}/z_matrices/${tissue}/${model_config}"
 
@@ -84,7 +84,6 @@ Rscript ${scripts_dir}/xtune_fusion_cis_trans.R \
     --gene $gene \
     --working_dir "$wd" \
     --models "$models" \
-    --output_dir "$output" \
     --weights_dir "$weights" \
     --tissue "$tissue" \
     --PATH_plink "$plink_path" \
@@ -94,4 +93,18 @@ Rscript ${scripts_dir}/xtune_fusion_cis_trans.R \
     --gene_info_file "$gene_info_file_path" \
     --folds "$folds" \
     --base_dir $base_dir
+
+# Hooks E + F: drop per-gene plink chunks and BSLMM working files once .wgt.RDat exists
+if [[ -f "${weights}/${gene}.wgt.RDat" ]]; then
+    if [[ "$cleanup_egret_plink" == "TRUE" ]]; then
+        for i in $(seq 0 $folds); do
+            rm -f ${plink_dir}/fold_$i/${gene}.bed ${plink_dir}/fold_$i/${gene}.bim ${plink_dir}/fold_$i/${gene}.fam ${plink_dir}/fold_$i/${gene}.nosex ${plink_dir}/fold_$i/${gene}.log
+        done
+    fi
+    if [[ "$cleanup_egret_working" == "TRUE" ]]; then
+        for i in $(seq 0 $folds); do
+            rm -rf $wd/fold_$i/${gene}*
+        done
+    fi
+fi
 done

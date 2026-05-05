@@ -41,7 +41,7 @@ base_dir = opt$base_dir
 
 if (!is.na(opt$expression_file)) {
   expression = fread(opt$expression_file, header = T)
-  genes = expression$gene
+  genes = expression[[1]]
 } else {
   print("please use valid expression file")
   q()
