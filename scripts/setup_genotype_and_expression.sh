@@ -15,7 +15,6 @@ scripts_dir=${12}          # directory where scripts are located
 
 mkdir ${output_dir}/genotype_files/
 
-if false ; then
 Rscript ${scripts_dir}/0_setup_genotypes.R \
 	--plink_path $plink_path \
 	--bfile $genotypes_file_path \
@@ -24,7 +23,6 @@ Rscript ${scripts_dir}/0_setup_genotypes.R \
 	--LD_window 100 \
 	--out ${output_dir}/genotype_files/${genotype_output_prefix}
 
-fi
 Rscript ${scripts_dir}/1_setup_expression.R \
 	--expression $expression_file_path \
 	--individuals  $individuals_file_path \

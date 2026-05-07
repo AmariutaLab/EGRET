@@ -23,6 +23,7 @@ cleanup_matrixeqtl_raw=${21:-"FALSE"}
 
 expression_file_path=${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz
 
+
 bed_job_ids=()
 for fold in $(seq 0 $folds); do
     jid=$(sbatch --parsable ${slurm_log_dir:+--output=${slurm_log_dir}/make_EGRET_bed.%j.%N.out} ${scripts_dir}/run_make_EGRET_bed_files.sh \
@@ -49,7 +50,6 @@ echo "Submitted ${#bed_job_ids[@]} bed file jobs"
 # Build dependency string so model jobs wait for all bed file jobs
 dep_str=$(IFS=:; echo "${bed_job_ids[*]}")
 dependency="--dependency=afterok:${dep_str}"
-
 
 # Estimate gene count from expression file (upper bound)
 num_genes=$(zcat "${output_dir}/expression_files/${tissue}_expression.txt.gz" | tail -n +2 | wc -l)

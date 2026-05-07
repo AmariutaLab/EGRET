@@ -258,11 +258,10 @@ for (fold in 1:num_folds) {
 
 	}
 
-}
+	rm(genos, train_geno, train_pheno, keep_geno, keep_pheno, bim, cis, cis_snps, trans_snps, pred.wgt)
+	gc()
 
-wgt.matrix = matrix(0,nrow=nrow(genos$bim),ncol=M)
-colnames(wgt.matrix) = models
-rownames(wgt.matrix) = genos$bim[,2]
+}
 
 
 for ( mod in 1:M ) {

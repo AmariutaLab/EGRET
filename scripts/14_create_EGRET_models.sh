@@ -4,7 +4,7 @@
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=4G
+#SBATCH --mem=12G
 #SBATCH --account=csd832
 #SBATCH --export=ALL
 #SBATCH -t 24:00:00
