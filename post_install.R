@@ -1,5 +1,5 @@
 # post_install.R — run after creating the conda environment
-# Usage: conda activate transTWAS_env && Rscript post_install.R
+# Usage: conda activate egret_env && Rscript post_install.R
 #
 # Installs the R packages that are not distributed through the channels environment.yml
 # configures. Run from the repository root so the local plink2R source is found.

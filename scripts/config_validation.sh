@@ -88,7 +88,7 @@ gwas_sumstats=(
 )
 
 # Runtime and scheduler
-conda_env="transTWAS_env"
+conda_env="egret_env"
 slurm_account="csd832"
 slurm_partition="shared"
 slurm_log_dir="${_val_dir}/slurm_logs"
