@@ -1,3 +1,8 @@
+# --- ModifiedPCOMerged.R ---------------------------------------------------
+# Vendored PCO implementation (Guo et al. trans-PCO). Combines per-gene z-scores across a
+# co-expression module into one multivariate p-value. Sourced by 5.6_PCO_association_by_module.R.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 ModifiedPCOMerged = function(Z.mat,Sigma,SigmaO,p.method="TruncPCO",method = "davies"){
   ## avoid Z.mat is a row vector which won't work later
   ## Z.mat should be a column vector object, not a 1*K matrix 

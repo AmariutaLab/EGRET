@@ -1,3 +1,12 @@
+# --- 0.1_make_crossmappable_gene_beds.R ------------------------------------
+# Builds, for each gene, the BED of variants that fall near a cross-mappable
+# partner gene. 6.2 subtracts these so a trans signal cannot be read-misalignment.
+# Manual prep: run once per output_dir before the models stage.
+#
+#   in : gene_info; crossmap_file (Saha et al. cross-mappability table)
+#   out: cross_mapped/{crossmap_dir}/{gene}.bed
+#   run: by hand -- not a workflow stage
+# --------------------------------------------------------------------------
 library(data.table)
 library(optparse)
 
@@ -7,7 +16,12 @@ option_list = list(
   make_option("--crossmap_file", action="store", default=NA, type='character',
               help="Path to cross-mappability strength file (cross_mappability_strength.txt.gz)"),
   make_option("--output_dir", action="store", default=NA, type='character',
-              help="Base output directory; BED files written to output_dir/cross_mapped/background_mismatches/"),
+              help="Base output directory; BED files written to output_dir/cross_mapped/<crossmap_dir>/"),
+  make_option("--crossmap_dir", action="store", default=NA, type='character',
+              help="Subdirectory under output_dir/cross_mapped/ to write BED files into. MUST match the
+                crossmap_dir setting the model-training stage reads (config.sh), otherwise
+                6.2_make_EGRET_beds_by_fold.R will not find these files
+                [default: %default]"),
   make_option("--cis_window", action="store", default=1000000, type='integer',
               help="Window (bp) around focal gene TSS used to exclude same-region cross-map partners [default: 1000000]"),
   make_option("--crossmap_window", action="store", default=100000, type='integer',
@@ -15,6 +29,11 @@ option_list = list(
 )
 
 opt = parse_args(OptionParser(option_list=option_list))
+
+
+required = c("gene_info", "crossmap_file", "output_dir", "crossmap_dir")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
 
 # gene info
 all_gene_info = fread(opt$gene_info, header = TRUE)
@@ -24,7 +43,10 @@ cross_mappable_genes = fread(opt$crossmap_file, header = FALSE)
 
 focal_genes = unique(cross_mappable_genes$V2)
 
-out_dir = file.path(opt$output_dir, "cross_mapped", "background_mismatches_new")
+# --crossmap_dir MUST match config.sh's crossmap_dir. The consumer
+# (6.2_make_EGRET_beds_by_fold.R) reads that value, so a mismatch writes beds the
+# pipeline never looks at and the cross-mappability filter silently does nothing.
+out_dir = file.path(opt$output_dir, "cross_mapped", opt$crossmap_dir)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 num_cross_mapped_genes = length(focal_genes)
 

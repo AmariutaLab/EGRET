@@ -1,110 +1,76 @@
 #!/bin/bash
-tissue=$1
-folds=$2
-FDR=$3
-covariate_columns_for_coexpression=$4
-gene_info=$5
-plink_path=$6
-output_dir=$7
-genotype_prefix=${8:-"GTEX_v8_genotypes_pruned"}
-scripts_dir=${9}
-slurm_log_dir=${10:-""}
-cleanup_transpco_raw=${11:-"FALSE"}
-
-
-Rscript ${scripts_dir}/9.0_run_WGCNA_clustering.R \
-	--expression ${output_dir}/expression_files/${tissue}_expression.txt.gz \
-	--output_dir ${output_dir}/ \
-	--individuals ${output_dir}/fold_0_info/${tissue}/train_individuals.txt \
-	--covariates ${output_dir}/covariate_files/${tissue}_covariates.txt.gz \
-	--tissue $tissue \
-    --gene_info $gene_info \
-	--covariate_columns_for_coexpression "$covariate_columns_for_coexpression"
-
-
-Rscript ${scripts_dir}/9.1_initialize_chr_genotypes.R \
-    --tissue $tissue \
-    --output_dir $output_dir \
-    --folds $folds \
-    --genotype_prefix $genotype_prefix \
-    --plink_path $plink_path
-
-
-
-# Find the fold with the most modules (use as the canonical module list)
-max_files=0
-for fold in $(seq 0 $folds); do
-    dir="${output_dir}/transPCO/${tissue}/fold_${fold}/modules"
-    file_count=$(find "$dir" -type f 2>/dev/null | wc -l)
-    if (( file_count > max_files )); then
-        max_files=$file_count
-        max_module_dir=$dir
-    fi
+# --- 5.0_run_transPCO_stage.sh ---------------------------------------------
+# Stage `transpco`. Multivariate trans mapping over co-expression modules: builds
+# WGCNA modules and per-chromosome genotypes, then chains the per-module MatrixeQTL,
+# PCO association and FDR jobs through SLURM dependencies.
+#
+#   in : expression_files/{tissue}_expression.txt.gz; covariates; genotype_files/
+#   out: transPCO/{tissue}/fold_{i}/{transpco_bed_dir}/{gene}.txt
+#   run: run_EGRET_workflow.sh, stage `transpco`
+# --------------------------------------------------------------------------
+set -euo pipefail
+# Locate workflow_lib.sh; see its header for why BASH_SOURCE alone is not enough.
+scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || scripts_dir=${EGRET_SCRIPTS_DIR:-${SLURM_SUBMIT_DIR:-}}
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || { echo "ERROR: cannot locate workflow_lib.sh (tried BASH_SOURCE, EGRET_SCRIPTS_DIR, SLURM_SUBMIT_DIR); export EGRET_SCRIPTS_DIR to the EGRET scripts directory" >&2; exit 1; }
+export EGRET_SCRIPTS_DIR="$scripts_dir"
+source "${scripts_dir}/workflow_lib.sh"
+USAGE="Usage: 5.0_run_transPCO_stage.sh --tissue NAME --folds N --fdr VALUE --covariate_columns LIST --gene_info FILE --plink_path PATH --output_dir DIR --conda_env NAME --slurm_account NAME --slurm_partition NAME --slurm_log_dir DIR --matrix_job_id_file FILE --pco_job_id_file FILE --job_id_file FILE [options]"
+CLI_FLAGS=(--tissue --folds --fdr --covariate_columns --gene_info --plink_path --output_dir --genotype_prefix --conda_env --slurm_account --slurm_partition --slurm_log_dir --matrix_job_id_file --pco_job_id_file --job_id_file --cleanup_transpco_raw)
+CLI_VARS=(tissue folds fdr covariate_columns gene_info plink_path output_dir genotype_prefix conda_env slurm_account slurm_partition slurm_log_dir matrix_job_id_file pco_job_id_file job_id_file cleanup_transpco_raw)
+CLI_REQUIRED=(tissue folds fdr covariate_columns gene_info plink_path output_dir conda_env slurm_account slurm_partition slurm_log_dir matrix_job_id_file pco_job_id_file job_id_file)
+genotype_prefix=GTEX_v8_genotypes_pruned; cleanup_transpco_raw=FALSE
+parse_cli "$@"; activate_workflow_env "$conda_env"
+Rscript "${scripts_dir}/5.1_run_WGCNA_clustering.R" \
+    --expression "${output_dir}/expression_files/${tissue}_expression.txt.gz" --output_dir "$output_dir" \
+    --individuals "${output_dir}/fold_0_info/${tissue}/train_individuals.txt" \
+    --covariates "${output_dir}/covariate_files/${tissue}_covariates.txt.gz" --tissue "$tissue" \
+    --folds "$folds" --gene_info "$gene_info" --covariate_columns_for_coexpression "$covariate_columns"
+Rscript "${scripts_dir}/5.2_initialize_chr_genotypes.R" --tissue "$tissue" --output_dir "$output_dir" \
+    --folds "$folds" --genotype_prefix "$genotype_prefix" --plink_path "$plink_path"
+module_names=()
+for ((fold=0; fold<=folds; fold++)); do
+    module_dir="${output_dir}/transPCO/${tissue}/fold_${fold}/modules"
+    [[ -d "$module_dir" ]] || cli_die "transPCO module directory is missing: $module_dir"
+    for module_file in "$module_dir"/*; do
+        [[ -s "$module_file" ]] || continue
+        module_names+=("$(basename "$module_file")")
+    done
 done
-echo "Using module list from: $max_module_dir"
-
-job_ids=()
-for file in "$max_module_dir"/*; do
-    jid=$(sbatch --parsable ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_matrixeQTL.%j.%N.out} ${scripts_dir}/run_transPCO_matrixeQTL_job.sh \
-        $tissue \
-        $(basename $file) \
-        modules \
-        $output_dir \
-        $folds \
-        $plink_path \
-        $genotype_prefix \
-        $scripts_dir)
-    job_ids+=($jid)
-    echo "Submitted job $jid for module $(basename $file)"
+((${#module_names[@]})) || cli_die "no non-empty transPCO module files found"
+mapfile -t modules < <(printf '%s\n' "${module_names[@]}" | sort -u)
+matrix_ids=()
+for module in "${modules[@]}"; do
+    jid=$(submit_with_retry --parsable --job-name="${tissue}_meqtl_${module%.*}" --account="$slurm_account" \
+        --partition="$slurm_partition" --output="${slurm_log_dir}/transPCO_matrixeQTL.%j.%N.out" \
+        "${scripts_dir}/5.3_run_MatrixeQTL_job.sh" --tissue "$tissue" --module "$module" \
+        --module_dir modules --output_dir "$output_dir" --folds "$folds" --plink_path "$plink_path" \
+        --genotype_prefix "$genotype_prefix" --conda_env "$conda_env")
+    [[ -n "$jid" ]] || cli_die "no job ID returned for transPCO MatrixeQTL module $module"
+    matrix_ids+=("$jid")
 done
-echo "Submitted ${#job_ids[@]} module jobs"
-
-# Build dependency string from all MatrixEQTL job IDs
-if [ ${#job_ids[@]} -gt 0 ]; then
-    dep_str=$(IFS=:; echo "${job_ids[*]}")
-    dependency="--dependency=afterok:${dep_str}"
-else
-    dependency=""
-fi
-
-
-# Submit one PCO association job per module, dependent on all MatrixEQTL jobs
-modules=$(find ${output_dir}/transPCO/${tissue}/fold_*/modules/ -type f -exec basename {} \; | sort | uniq)
-
-pco_job_ids=()
-for module in $modules
-do
-    jid=$(sbatch --parsable $dependency ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_PCO_assoc.%j.%N.out} ${scripts_dir}/run_transPCO_PCO_association_job.sh \
-        $tissue \
-        $module \
-        modules \
-        $output_dir \
-        $folds \
-        $gene_info \
-        $scripts_dir)
-    pco_job_ids+=($jid)
-    echo "Submitted PCO job $jid for module $module"
+matrix_dep=$(join_by_colon "${matrix_ids[@]}")
+write_job_ids "$matrix_job_id_file" "${matrix_ids[@]}"
+pco_ids=()
+for module in "${modules[@]}"; do
+    jid=$(submit_with_retry --parsable --job-name="${tissue}_pco_${module%.*}" --account="$slurm_account" \
+        --partition="$slurm_partition" --dependency="afterok:${matrix_dep}" \
+        --output="${slurm_log_dir}/transPCO_PCO_assoc.%j.%N.out" \
+        "${scripts_dir}/5.5_run_PCO_association_job.sh" --tissue "$tissue" --module "$module" \
+        --module_dir modules --output_dir "$output_dir" --folds "$folds" --gene_info "$gene_info" \
+        --genotype_prefix "$genotype_prefix" --conda_env "$conda_env")
+    [[ -n "$jid" ]] || cli_die "no job ID returned for transPCO PCO module $module"
+    pco_ids+=("$jid")
 done
-echo "Submitted ${#pco_job_ids[@]} PCO association jobs"
-
-
-# Count expected modules for verification
-module_count=$(echo "$modules" | wc -w)
-
-# Submit results analysis after all PCO jobs finish (afterany so it can check file counts itself)
-if [ ${#pco_job_ids[@]} -gt 0 ]; then
-    pco_dep_str=$(IFS=:; echo "${pco_job_ids[*]}")
-    pco_dependency="--dependency=afterany:${pco_dep_str}"
-else
-    pco_dependency=""
-fi
-
-sbatch $pco_dependency ${slurm_log_dir:+--output=${slurm_log_dir}/transPCO_results.%j.%N.out} ${scripts_dir}/run_transPCO_results_analysis_job.sh \
-    $tissue \
-    $FDR \
-    $output_dir \
-    $folds \
-    $module_count \
-    $scripts_dir \
-    $genotype_prefix \
-    "$cleanup_transpco_raw"
+((${#pco_ids[@]})) || cli_die "no transPCO PCO jobs were submitted"
+pco_dep=$(join_by_colon "${pco_ids[@]}")
+write_job_ids "$pco_job_id_file" "${pco_ids[@]}"
+final_jid=$(submit_with_retry --parsable --job-name="${tissue}_transpco_results" --account="$slurm_account" \
+    --partition="$slurm_partition" --dependency="afterok:${pco_dep}" \
+    --output="${slurm_log_dir}/transPCO_results.%j.%N.out" \
+    "${scripts_dir}/5.7_run_results_analysis_job.sh" --tissue "$tissue" --fdr "$fdr" \
+    --output_dir "$output_dir" --folds "$folds" --expected_module_count "${#modules[@]}" \
+    --genotype_prefix "$genotype_prefix" --conda_env "$conda_env" \
+    --cleanup_transpco_raw "$cleanup_transpco_raw")
+[[ -n "$final_jid" ]] || cli_die "no job ID returned for transPCO results analysis"
+write_job_ids "$job_id_file" "$final_jid"

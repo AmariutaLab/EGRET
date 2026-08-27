@@ -1,3 +1,11 @@
+# --- 3.1_run_MatrixeQTL.R --------------------------------------------------
+# Univariate trans-eQTL scan: tests every SNP against every gene, per fold, keeping
+# associations below a permissive p-value threshold for later FDR control.
+#
+#   in : fold_{i}_info/{tissue}/train_expression.txt and train_genotypes.txt
+#   out: MatrixeQTL/{tissue}/association_results_fold_{i}_0.0001_threshold.txt
+#   run: 3.0_run_MatrixeQTL_stage.sh
+# --------------------------------------------------------------------------
 library('MatrixEQTL')
 library('optparse')
 
@@ -12,12 +20,12 @@ option_list = list(
 
 opt = parse_args(OptionParser(option_list=option_list))
 
-if (is.na(opt$tissue)) {
-        print("no tissue specified")
-        q()
-} else {
-        tissue = opt$tissue
-}
+
+required = c("tissue", "folds", "output_dir")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
+
+tissue = opt$tissue
 output_dir = opt$output_dir
 
 for (fold in 0:opt$folds) {

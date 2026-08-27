@@ -1,9 +1,13 @@
+# --- liumod.R --------------------------------------------------------------
+# Vendored. Modified Liu approximation used alongside liu.R.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 liumod <- function(q, lambda, h = rep(1,length(lambda)), delta = rep(0,length(lambda))) {
 
   r <- length(lambda)
   if (length(h) != r) stop("lambda and h should have the same length!")
   if (length(delta) != r) stop("lambda and delta should have the same length!")
- 
+
   c1 <- sum(lambda*h) + sum(lambda*delta)
 
   c2 <- sum(lambda^2*h) + 2*sum(lambda^2*delta)
@@ -11,7 +15,7 @@ liumod <- function(q, lambda, h = rep(1,length(lambda)), delta = rep(0,length(la
   c3 <- sum(lambda^3*h) + 3*sum(lambda^3*delta)
 
   c4 <- sum(lambda^4*h) + 4*sum(lambda^4*delta)
-  
+
   s1 <- c3/(c2^(3/2))
 
   s2 <- c4/c2^2
@@ -41,7 +45,7 @@ liumod <- function(q, lambda, h = rep(1,length(lambda)), delta = rep(0,length(la
   muX <- l+delta
 
   sigmaX <- sqrt(2)*a
-  
+
   Qq <- pchisq(tstar*sigmaX+muX,df=l,ncp=delta,lower.tail=FALSE)
 
   return(Qq)

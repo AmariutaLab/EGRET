@@ -1,3 +1,13 @@
+# --- 1.2_setup_expression.R ------------------------------------------------
+# Subsets expression to the tissue and individual list, then writes it twice: raw,
+# and residualized on every covariate column and scaled.
+# This is the ONLY place covariates are regressed out. Training stages read the
+# regressed file and pass no --covariates; re-adding it would regress twice.
+#
+#   in : expression, covariates, individuals, gene_info
+#   out: expression_files/{tissue}_expression.txt.gz and _expression_regressed.txt.gz; covariate_files/
+#   run: 1.0_setup_genotype_and_expression.sh
+# --------------------------------------------------------------------------
 library("data.table")
 library("optparse")
 
@@ -18,12 +28,17 @@ option_list = list(
 
 opt = parse_args(OptionParser(option_list=option_list))
 
+
+required = c("expression", "individuals", "covariates", "tissue", "gene_info", "output_dir")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
+
 tissue = opt$tissue
 
 expression_file = fread(opt$expression, header = TRUE)
 
-individuals = fread(opt$individuals, header = FALSE)
-individuals = unlist(individuals$V1)
+individuals = fread(opt$individuals, header = FALSE, colClasses = "character")
+individuals = as.character(unlist(individuals$V1))
 
 expression_file = expression_file[, c("gene_id", individuals), with = FALSE]
 
@@ -49,19 +64,20 @@ dir.create(paste0(opt$output_dir,"/covariate_files/"),recursive = T)
 
 fwrite(covariates,paste0(opt$output_dir,"/covariate_files/",tissue,"_covariates.txt.gz"),col.names = T, row.names = F, quote = F, sep = '\t')
 
-residual_gene_expression = matrix(nrow = nrow(expression_file), ncol = ncol(expression_file))
-colnames(residual_gene_expression) = colnames(expression_file)
+expression_matrix = as.matrix(expression_file[, setdiff(names(expression_file), "gene_id"), with = FALSE])
+design_matrix = cbind(1, as.matrix(covariates[, 3:ncol(covariates), with = FALSE]))
+design_qr = qr(design_matrix)
+# qr.resid, NOT `y - X %*% qr.coef(...)`: qr.coef returns NA on a rank-deficient design,
+# which silently turns the whole regressed matrix into NA. Reachable in practice -- `sex`
+# is constant in the sex-specific GTEx tissues, so it is aliased with the intercept.
+residuals_by_gene = qr.resid(design_qr, t(expression_matrix))
+residual_gene_expression = t(scale(residuals_by_gene))
 
-for (row in 1:nrow(expression_file)) {
-        reg = summary(lm( t(as.matrix(expression_file[row,-c('gene_id')])) ~ as.matrix(covariates[,c(3:ncol(covariates)),with = FALSE]) ))
-        residual_gene_expression[row,2:ncol(residual_gene_expression)] = scale(reg$residuals) # scaled residuals
-}
-
-residual_gene_expression_df = as.data.frame(residual_gene_expression)
-residual_gene_expression_df$gene_id = expression_file$gene_id
-
-# Reorder columns to place gene_id first
-residual_gene_expression_df = residual_gene_expression_df[, c("gene_id", setdiff(names(residual_gene_expression_df), "gene_id"))]
+residual_gene_expression_df = data.frame(
+        gene_id = expression_file$gene_id,
+        residual_gene_expression,
+        check.names = FALSE
+)
 
 # Write to file with fwrite
 fwrite(residual_gene_expression_df, paste0(opt$output_dir,"/expression_files/",tissue,"_expression_regressed.txt.gz"), col.names = TRUE, row.names = FALSE, quote = FALSE, sep = '\t')

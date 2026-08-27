@@ -1,3 +1,9 @@
+# --- FUSION.compute_weights.R ----------------------------------------------
+# Vendored from FUSION (gusevlab.org/projects/fusion). Trains the cis expression models.
+# Local changes: --fusion_models / --plink_path / --gcta_path / --gemma_path flags so the
+# binaries and model set come from config.sh instead of being hardcoded.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 # ==== TODO
 # * Make sure BLUP/BSLMM weights are being scaled properly based on MAF
 
@@ -7,7 +13,7 @@ suppressMessages(library('glmnet'))
 suppressMessages(library('methods'))
 
 option_list = list(
-  make_option("--bfile", action="store", default=NA, type='character',
+  make_option("--genotype_prefix", action="store", default=NA, type='character',
               help="Path to PLINK binary input file prefix (minus bed/bim/fam) [required]"),
   make_option("--out", action="store", default=NA, type='character',
               help="Path to output files [required]"),
@@ -15,13 +21,13 @@ option_list = list(
               help="Path to temporary files [required]"),
   make_option("--pheno", action="store", default=NA, type='character',
               help="Path to molecular phenotype file (PLINK format) [optional, taken from bfile otherwise]"),
-  make_option("--PATH_plink", action="store", default="plink", type='character',
+  make_option("--plink_path", action="store", default="plink", type='character',
               help="Path to plink executable [%default]"),
-  make_option("--PATH_gcta", action="store", default="gcta_nr_robust", type='character',
+  make_option("--gcta_path", action="store", default="gcta_nr_robust", type='character',
               help="Path to plink executable [%default]"),
-  make_option("--PATH_gemma", action="store", default="gemma", type='character',
+  make_option("--gemma_path", action="store", default="gemma", type='character',
               help="Path to plink executable [%default]"),
-  make_option("--covar", action="store", default=NA, type='character',
+  make_option("--covariates", action="store", default=NA, type='character',
               help="Path to quantitative covariates (PLINK format) [optional]"),
   make_option("--resid", action="store_true", default=FALSE,
               help="Also regress the covariates out of the genotypes [default: %default]"),              
@@ -39,7 +45,7 @@ option_list = list(
               help="Rank-normalize the phenotype after all QC: [default: %default]"),
   make_option("--save_hsq", action="store_true", default=FALSE,
               help="Save heritability results even if weights are not computed [default: %default]"),			  
-  make_option("--models", action="store", default="blup,lasso,top1,enet", type='character',
+  make_option("--fusion_models", action="store", default="blup,lasso,top1,enet", type='character',
               help="Comma-separated list of prediction models [default: %default]\n
 					Available models:\n
 					top1:\tTop eQTL (standard marginal eQTL Z-scores always computed and stored)\n
@@ -51,11 +57,11 @@ option_list = list(
 )
 
 opt = parse_args(OptionParser(option_list=option_list))
-models = unique( c(unlist(strsplit(opt$models,',')),"top1") )
+models = unique( c(unlist(strsplit(opt$fusion_models,',')),"top1") )
 M = length(models)
 
 if ( ! all(models %in% c('blup', 'lasso', 'top1', 'enet', 'bslmm')) ) {
-	cat( "ERROR: --models flag included invalid models\n" , sep='' , file=stderr() )
+	cat( "ERROR: --fusion_models flag included invalid models\n" , sep='' , file=stderr() )
 	q()
 }
 
@@ -71,7 +77,9 @@ if ( opt$verbose == 2 ) {
 weights.bslmm = function( input , bv_type , snp , out=NA ) {
 	if ( is.na(out) ) out = paste(input,".BSLMM",sep='')
 
-	arg = paste( opt$PATH_gemma , " -miss 1 -maf 0 -r2 1 -rpace 1000 -wpace 1000 -bfile " , input , " -bslmm " , bv_type , " -o ../" , out , sep='' )
+	# gemma resolves -o against its own ./output/ directory. The old "-o ../" escape
+	# only worked when out was relative to the cwd; -outdir handles either form.
+	arg = paste( opt$gemma_path , " -miss 1 -maf 0 -r2 1 -rpace 1000 -wpace 1000 -bfile " , input , " -bslmm " , bv_type , " -outdir " , dirname(out) , " -o " , basename(out) , sep='' )
 	system( arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT)
 	eff = read.table( paste(out,".param.txt",sep=''),head=T,as.is=T)
 	eff.wgt = rep(NA,length(snp))
@@ -86,7 +94,7 @@ weights.bslmm = function( input , bv_type , snp , out=NA ) {
 weights.lasso = function( input , hsq , snp , out=NA ) {
 	if ( is.na(out) ) out = paste(input,".LASSO",sep='')
 
-	arg = paste( opt$PATH_plink , " --allow-no-sex --bfile " , input , " --lasso " , hsq , " --out " , out , sep='' )
+	arg = paste( opt$plink_path , " --allow-no-sex --bfile " , input , " --lasso " , hsq , " --out " , out , sep='' )
 	system( arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT )
 	if ( !file.exists(paste(out,".lasso",sep='')) ) {
 	cat( paste(out,".lasso",sep='') , " LASSO output did not exist\n" )
@@ -129,9 +137,9 @@ cleanup = function() {
 }
 
 # Perform i/o checks here:
-files = paste(opt$bfile,c(".bed",".bim",".fam"),sep='')
+files = paste(opt$genotype_prefix,c(".bed",".bim",".fam"),sep='')
 if ( !is.na(opt$pheno) ) files = c(files,opt$pheno)
-if ( !is.na(opt$covar) ) files = c(files,opt$covar)
+if ( !is.na(opt$covariates) ) files = c(files,opt$covariates)
 
 for ( f in files ) {
 	if ( !file.exists(f) ){
@@ -141,26 +149,26 @@ for ( f in files ) {
 	}
 }
 
-if ( system( paste(opt$PATH_plink,"--help") , ignore.stdout=T,ignore.stderr=T ) != 0 ) {
-	cat( "ERROR: plink could not be executed, set with --PATH_plink\n" , sep='', file=stderr() )
+if ( system( paste(opt$plink_path,"--help") , ignore.stdout=T,ignore.stderr=T ) != 0 ) {
+	cat( "ERROR: plink could not be executed, set with --plink_path\n" , sep='', file=stderr() )
 	cleanup()
 	q()
 }
 
-if ( !is.na(opt$hsq_set) && system( opt$PATH_gcta , ignore.stdout=T,ignore.stderr=T ) != 0 ){
-	cat( "ERROR: gcta could not be executed, set with --PATH_gcta\n" , sep='', file=stderr() )
+if ( !is.na(opt$hsq_set) && system( opt$gcta_path , ignore.stdout=T,ignore.stderr=T ) != 0 ){
+	cat( "ERROR: gcta could not be executed, set with --gcta_path\n" , sep='', file=stderr() )
 	cleanup()
 	q()
 }
 
-if ( sum(models=="bslmm" | models=="blup") != 0 && system( paste(opt$PATH_gemma,"-h") , ignore.stdout=T,ignore.stderr=T ) != 0 ){
-	cat( "ERROR: gemma could not be executed, set with --PATH_gemma or remove 'bslmm' and 'blup' from models\n" , sep='', file=stderr() )
+if ( sum(models=="bslmm" | models=="blup") != 0 && system( paste(opt$gemma_path,"-h") , ignore.stdout=T,ignore.stderr=T ) != 0 ){
+	cat( "ERROR: gemma could not be executed, set with --gemma_path or remove 'bslmm' and 'blup' from models\n" , sep='', file=stderr() )
 	cleanup()
 	q()
 }
 # ---
 
-fam = read.table(paste(opt$bfile,".fam",sep=''),as.is=T)
+fam = read.table(paste(opt$genotype_prefix,".fam",sep=''),as.is=T)
 
 # Make/fetch the phenotype file
 if ( !is.na(opt$pheno) ) {
@@ -186,8 +194,8 @@ if ( opt$rn ) {
 }
 
 # Load in the covariates if needed
-if ( !is.na(opt$covar) ) {
-	covar = ( read.table(opt$covar,as.is=T,head=T) )
+if ( !is.na(opt$covariates) ) {
+	covar = ( read.table(opt$covariates,as.is=T,head=T) )
 	if ( opt$verbose >= 1 ) cat( "Loaded",ncol(covar)-2,"covariates\n")
 	# Match up data
 	m = match( paste(fam[,1],fam[,2]) , paste(covar[,1],covar[,2]) )
@@ -206,7 +214,7 @@ if ( !is.na(opt$covar) ) {
 
 geno.file = opt$tmp
 # recode to the intersection of samples and new phenotype
-arg = paste( opt$PATH_plink ," --allow-no-sex --bfile ",opt$bfile," --pheno ",pheno.file," --keep ",pheno.file," --make-bed --out ",geno.file,sep='')
+arg = paste( opt$plink_path ," --allow-no-sex --bfile ",opt$genotype_prefix," --pheno ",pheno.file," --keep ",pheno.file," --make-bed --out ",geno.file,sep='')
 system(arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT)
 
 # --- HERITABILITY ANALYSIS
@@ -214,14 +222,14 @@ if ( is.na(opt$hsq_set) ) {
 if ( opt$verbose >= 1 ) cat("### Estimating heritability\n")
 
 # 1. generate GRM
-arg = paste( opt$PATH_plink," --allow-no-sex --bfile ",opt$tmp," --make-grm-bin --out ",opt$tmp,sep='')
+arg = paste( opt$plink_path," --allow-no-sex --bfile ",opt$tmp," --make-grm-bin --out ",opt$tmp,sep='')
 system(arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT)
 
 # 2. estimate heritability
-if ( !is.na(opt$covar) ) {
-arg = paste( opt$PATH_gcta ," --grm ",opt$tmp," --pheno ",raw.pheno.file," --qcovar ",opt$covar," --out ",opt$tmp," --reml --reml-no-constrain --reml-lrt 1",sep='')
+if ( !is.na(opt$covariates) ) {
+arg = paste( opt$gcta_path ," --grm ",opt$tmp," --pheno ",raw.pheno.file," --qcovar ",opt$covariates," --out ",opt$tmp," --reml --reml-no-constrain --reml-lrt 1",sep='')
 } else {
-arg = paste( opt$PATH_gcta ," --grm ",opt$tmp," --pheno ",pheno.file," --out ",opt$tmp," --reml --reml-no-constrain --reml-lrt 1",sep='')
+arg = paste( opt$gcta_path ," --grm ",opt$tmp," --pheno ",pheno.file," --out ",opt$tmp," --reml --reml-no-constrain --reml-lrt 1",sep='')
 }
 system(arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT)
 
@@ -269,7 +277,7 @@ if ( sum(nasnps) != 0 ) {
 }
 
 # regress covariates out of the genotypes as well (this is more accurate but slower)
-if ( !is.na(opt$covar) && opt$resid ) {
+if ( !is.na(opt$covariates) && opt$resid ) {
 	if ( opt$verbose >= 1 ) cat("regressing covariates out of the genotypes\n")
 	for ( i in 1:ncol(genos$bed) ) {
 		genos$bed[,i] = summary(lm( genos$bed[,i] ~ as.matrix(covar[,3:ncol(covar)]) ))$resid
@@ -309,7 +317,7 @@ for ( i in 1:opt$crossval ) {
 	# hide current fold
 	cv.file = paste(opt$tmp,".cv",sep='')
 	write.table( cv.train , quote=F , row.names=F , col.names=F , file=paste(cv.file,".keep",sep=''))	
-	arg = paste( opt$PATH_plink ," --allow-no-sex --bfile ",opt$tmp," --keep ",cv.file,".keep --out ",cv.file," --make-bed",sep='')
+	arg = paste( opt$plink_path ," --allow-no-sex --bfile ",opt$tmp," --keep ",cv.file,".keep --out ",cv.file," --make-bed",sep='')
 	system(arg , ignore.stdout=SYS_PRINT,ignore.stderr=SYS_PRINT)
 
 	for ( mod in 1:M ) {

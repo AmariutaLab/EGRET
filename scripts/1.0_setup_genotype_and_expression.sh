@@ -1,41 +1,30 @@
 #!/bin/bash
-
-genotypes_file_path=$1     # path to bed/bim/fam file containing genotype information for all individuals
-expression_file_path=$2    # path to file containing expression with column containing gene_id as ENSG format and other columns labeled by their individual ids
-covariates_file_path=$3    # path to file containing covariate information with rows as given by their individial ids and columns as covariates to be regressed out
-tissue=$4                  # tissue for analysis
-individuals_file_path=$5   # path to file with no header containing a list of individual ids for analysis
-LD_prune_r2=$6             # LD r2 limit by which to prune variants by. Default is 0.9
-plink_path=$7              # path to plink executable
-genotype_output_prefix=$8  # prefix which to store genotypes by
-folds=$9                   # number of folds for crossvalidation
-gene_info_file_path=${10}  # file containing gene info such as gene id, gene name, chr, and start location
-output_dir=${11}           # directory where output files will be stored
-scripts_dir=${12}          # directory where scripts are located
-
-mkdir ${output_dir}/genotype_files/
-
-Rscript ${scripts_dir}/0_setup_genotypes.R \
-	--plink_path $plink_path \
-	--bfile $genotypes_file_path \
-	--LD_r2 $LD_prune_r2 \
-	--LD_chunk 1 \
-	--LD_window 100 \
-	--out ${output_dir}/genotype_files/${genotype_output_prefix}
-
-Rscript ${scripts_dir}/1_setup_expression.R \
-	--expression $expression_file_path \
-	--individuals  $individuals_file_path \
-	--covariates  $covariates_file_path \
-	--tissue $tissue \
-	--gene_info $gene_info_file_path \
-	--output_dir $output_dir
-
-Rscript ${scripts_dir}/2_setup_folds.R \
-	--expression $output_dir/expression_files/${tissue}_expression_regressed.txt.gz \
-	--folds $folds \
-	--tissue ${tissue} \
-	--individuals $individuals_file_path \
-	--plink_path $plink_path \
-	--bfile $output_dir/genotype_files/${genotype_output_prefix} \
-	--output_dir $output_dir
+# --- 1.0_setup_genotype_and_expression.sh ----------------------------------
+# Stage `setup`. Runs the three preprocessing steps in order: LD-prune genotypes,
+# filter and residualize expression, then assign cross-validation folds.
+#
+#   in : genotype_prefix, expression, covariates, individuals, gene_info
+#   out: genotype_files/, expression_files/, covariate_files/, fold_{i}_info/
+#   run: run_EGRET_workflow.sh, stage `setup`
+# --------------------------------------------------------------------------
+set -euo pipefail
+# Locate workflow_lib.sh; see its header for why BASH_SOURCE alone is not enough.
+scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || scripts_dir=${EGRET_SCRIPTS_DIR:-${SLURM_SUBMIT_DIR:-}}
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || { echo "ERROR: cannot locate workflow_lib.sh (tried BASH_SOURCE, EGRET_SCRIPTS_DIR, SLURM_SUBMIT_DIR); export EGRET_SCRIPTS_DIR to the EGRET scripts directory" >&2; exit 1; }
+export EGRET_SCRIPTS_DIR="$scripts_dir"
+source "${scripts_dir}/workflow_lib.sh"
+USAGE="Usage: 1.0_setup_genotype_and_expression.sh --genotype_prefix PATH --expression FILE --covariates FILE --tissue NAME --individuals FILE --plink_path PATH --gene_info FILE --output_dir DIR --conda_env NAME [options]"
+CLI_FLAGS=(--genotype_prefix --expression --covariates --tissue --individuals --ld_prune_r2 --plink_path --genotype_output_prefix --folds --gene_info --output_dir --conda_env)
+CLI_VARS=(genotype_prefix expression covariates tissue individuals ld_prune_r2 plink_path genotype_output_prefix folds gene_info output_dir conda_env)
+CLI_REQUIRED=(genotype_prefix expression covariates tissue individuals plink_path gene_info output_dir conda_env)
+ld_prune_r2=0.9; genotype_output_prefix=GTEX_v8_genotypes_pruned; folds=5
+parse_cli "$@"; activate_workflow_env "$conda_env"
+mkdir -p "${output_dir}/genotype_files"
+Rscript "${scripts_dir}/1.1_setup_genotypes.R" --plink_path "$plink_path" --genotype_prefix "$genotype_prefix" \
+    --LD_r2 "$ld_prune_r2" --LD_chunk 1 --LD_window 100 --out "${output_dir}/genotype_files/${genotype_output_prefix}"
+Rscript "${scripts_dir}/1.2_setup_expression.R" --expression "$expression" --individuals "$individuals" \
+    --covariates "$covariates" --tissue "$tissue" --gene_info "$gene_info" --output_dir "$output_dir"
+Rscript "${scripts_dir}/1.3_setup_folds.R" --expression "${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz" \
+    --folds "$folds" --tissue "$tissue" --individuals "$individuals" --plink_path "$plink_path" \
+    --genotype_prefix "${output_dir}/genotype_files/${genotype_output_prefix}" --output_dir "$output_dir"

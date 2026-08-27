@@ -1,3 +1,7 @@
+# --- ModifiedSigmaOEstimate.R ----------------------------------------------
+# Vendored with ModifiedPCOMerged.R: estimates the null covariance the PCO test needs.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 # Estimate the SigmaMeta for PCMeta p-value computation
 # This is a pre-computation step for PCMeta
 # input: the correlation matrix among Z-scores

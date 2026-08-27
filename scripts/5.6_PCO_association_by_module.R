@@ -1,3 +1,12 @@
+# --- 5.6_PCO_association_by_module.R ---------------------------------------
+# Combines each SNP's per-gene z-scores across a module into one multivariate PCO
+# p-value, so a SNP with weak effects on many module genes can still be detected.
+# Sources the vendored PCO implementation (ModifiedPCOMerged.R and friends).
+#
+#   in : transPCO/{tissue}/fold_{i}/association_results/
+#   out: transPCO/{tissue}/fold_{i}/PCO_association_results/
+#   run: 5.5_run_PCO_association_job.sh
+# --------------------------------------------------------------------------
 library(data.table)
 library(optparse)
 
@@ -15,15 +24,22 @@ option_list = list(
               help = "Directory to put PCO association results"),
   make_option("--output_dir", action = "store", default = NA, type = 'character',
               help = "Base output directory for the pipeline"),
-  make_option("--folds", action = "store", default = 5, type = 'integer',
+  make_option("--folds", action = "store", default = NA, type = 'integer',
               help = "Number of cross-validation folds (iterates fold_0 through fold_N)"),
   make_option("--gene_info", action = "store", default = NA, type = 'character',
               help = "Path to gene info file (e.g. GTEx_V8.txt.gz)"),
   make_option("--scripts_dir", action = "store", default = NA, type = 'character',
-              help = "Directory containing helper R scripts and shared libraries")
+              help = "Directory containing helper R scripts and shared libraries"),
+  make_option("--genotype_prefix", action = "store", default = NA, type = 'character',
+              help = "genotype file prefix, used to derive the chromosome count from the .bim")
 )
 
 opt = parse_args(OptionParser(option_list = option_list))
+
+
+required = c("tissue", "module", "module_dir", "association_dir", "results_dir", "output_dir", "folds", "gene_info", "scripts_dir", "genotype_prefix")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
 
 scripts_dir = opt$scripts_dir
 source(file.path(scripts_dir, "ModifiedPCOMerged.R"))
@@ -44,6 +60,12 @@ base_dir = opt$output_dir
 gene_info = fread(opt$gene_info, header = TRUE)
 gene_expression = fread(file.path(base_dir, "expression_files", paste0(tissue, "_expression_regressed.txt.gz")), header = TRUE)
 
+# Chromosome count from the .bim, as 5.2 and 5.4 also do. All three must agree, or the
+# two halves of the transPCO branch disagree on a partial or non-human panel.
+bim_file = fread(file.path(base_dir, "genotype_files", paste0(opt$genotype_prefix, ".bim")),
+                 header = FALSE, sep = '\t')
+number_chr = max(bim_file$V1)
+
 # Process module across folds
 for (fold in 0:opt$folds) {
   cat(sprintf("Processing Fold: %d, Module: %s\n", fold, module))
@@ -63,9 +85,16 @@ for (fold in 0:opt$folds) {
 
   module_name = sub("\\..*$", "", module)  # Remove file extension
 
-  # Iterate over chromosomes 1–22
-  for (chr in 1:22) {
+  for (chr in 1:number_chr) {
     cat(sprintf("Processing Module: %s, Chromosome: %d, Fold: %d\n", module_name, chr, fold))
+
+    # Resume guard, checking the OUTPUT: the z-matrix input is deleted once its PCO output
+    # exists, so a re-entered job would otherwise find no input and refuse to start.
+    output_file = file.path(fold_results_dir, paste0(module_name, "_chr_", chr, ".txt.gz"))
+    if (file.exists(output_file)) {
+      cat(sprintf("Already computed, skipping: %s\n", output_file))
+      next
+    }
 
     # Filter genes in module by chromosome
     valid_genes = gene_info$geneId[gene_info$`#chrom` != paste0("chr", chr)]
@@ -106,12 +135,12 @@ for (fold in 0:opt$folds) {
     # Subset Z.mat to include only columns matching genes in module
     Z.mat = Z.mat[, ..genes_in_module_vector, with = FALSE]
 
-    # Estimate SigmaO and compute p-values
-    SigmaO = ModifiedSigmaOEstimate(Sigma)
+    # SigmaO calibrates the min-p across the six PCO statistics, so it must be simulated
+    # with the SAME tail approximation the test uses -- keep these two arguments in step.
+    SigmaO = ModifiedSigmaOEstimate(Sigma, method = 'liu')
     pvals = ModifiedPCOMerged(Z.mat, Sigma, SigmaO, method = 'liu')
 
-    # Save results
-    output_file = file.path(fold_results_dir, paste0(module_name, "_chr_", chr, ".txt.gz"))
+    # Save results (output_file was defined by the resume guard at the top of this loop)
     pvals = data.table(rsIDs = snps, pval = pvals)
     fwrite(pvals, file = output_file, sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
     if (file.exists(output_file)) {

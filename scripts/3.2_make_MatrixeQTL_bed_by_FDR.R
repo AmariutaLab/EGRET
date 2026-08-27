@@ -1,3 +1,11 @@
+# --- 3.2_make_MatrixeQTL_bed_by_FDR.R --------------------------------------
+# Applies global FDR control to the MatrixeQTL scan and writes one BED file of
+# significant trans SNPs per gene, which the EGRET training stage consumes.
+#
+#   in : MatrixeQTL/{tissue}/association_results_fold_{i}_*.txt
+#   out: MatrixeQTL/{tissue}/fold_{i}/results_FDR_{fdr}/{gene}.txt
+#   run: 3.0_run_MatrixeQTL_stage.sh
+# --------------------------------------------------------------------------
 library('data.table')
 library('optparse')
 
@@ -6,27 +14,33 @@ option_list = list(
               help="tissue"),
   make_option("--folds", action="store",default=NA, type='numeric',
               help="number of folds for analysis"),
-  make_option("--FDR", action="store", default=0.1, type='numeric',
+  make_option("--FDR", action="store", default=NA, type='numeric',
               help="FDR rate to include snps into the model"),
   make_option("--gene_info", action="store",default=NA, type='character',
         	  help="file containg gene info such as gene id, gene name, start, chromosome, and gene type"),
-  make_option("--genotype_output_prefix", action="store",default=NA, type='character',
+  make_option("--genotype_prefix", action="store",default=NA, type='character',
         	  help="prefix to access bim file within genotypes folder "),
   make_option("--output_dir", action="store",default=NA, type='character',
               help="directory where results are stored")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
+
+required = c("tissue", "folds", "FDR", "gene_info", "genotype_prefix", "output_dir")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
+
 tissue = opt$tissue
 
 all_gene_info = fread(opt$gene_info, header = T)
-all_snp_info = fread(paste0(opt$output_dir,"/genotype_files/", opt$genotype_output_prefix ,".bim"), header = F)
+all_snp_info = fread(paste0(opt$output_dir,"/genotype_files/", opt$genotype_prefix ,".bim"), header = F)
 
 
 gene_expression = fread(paste0(opt$output_dir,"/expression_files/",tissue,"_expression_regressed.txt.gz"),header = T)
 
-for (fold in 0:5) {
+for (fold in 0:opt$folds) {
 	results = fread(paste0(opt$output_dir,"/MatrixeQTL/",tissue,"/association_results_fold_",fold,"_0.0001_threshold.txt"),header = T)
+	setkey(results, gene)
 	genes = unique(results$gene)
 	output_dir = paste0(opt$output_dir,"/MatrixeQTL/",tissue,"/fold_",fold,"/results_FDR_",opt$FDR,"/")
 	largest_sig_pval = c()

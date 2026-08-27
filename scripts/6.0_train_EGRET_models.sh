@@ -1,69 +1,64 @@
 #!/bin/bash
-tissue=$1
-folds=$2
-models=$3
-plink_path=${4:-"plink2"}
-output_dir=$5
-MatrixeQTL_bed_dir=${6:-"results_FDR_0.1"}
-GBAT_bed_dir=${7:-"results_FDR_0.1"}
-transPCO_bed_dir=${8:-"bed_files_FDR_0.1"}
-exclude_crossmap=${9:-"TRUE"}
-crossmap_dir=${10:-"background_mismatches"}
-genotype_prefix=${11:-"GTEX_v8_genotypes_pruned"}
-egret_output_subdir=${12:-"EGRET"}
-fusion_models=${13:-"xtune,lasso,enet,blup"}
-gemma_path=${14:-"./gemma-0.98.5-linux-static-AMD64"}
-chunk_size=${15:-500}
-gene_info_file_path=${16:-"../../data/GTEx_V8.txt.gz"}
-scripts_dir=${17}
-slurm_log_dir=${18:-""}
-cleanup_egret_plink=${19:-"FALSE"}
-cleanup_egret_working=${20:-"FALSE"}
-cleanup_matrixeqtl_raw=${21:-"FALSE"}
-
-expression_file_path=${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz
-
-
-bed_job_ids=()
-for fold in $(seq 0 $folds); do
-    jid=$(sbatch --parsable ${slurm_log_dir:+--output=${slurm_log_dir}/make_EGRET_bed.%j.%N.out} ${scripts_dir}/run_make_EGRET_bed_files.sh \
-        "$tissue" \
-        "$output_dir" \
-        "$MatrixeQTL_bed_dir" \
-        "$GBAT_bed_dir" \
-        "$transPCO_bed_dir" \
-        "$egret_output_subdir" \
-        "$exclude_crossmap" \
-        "$crossmap_dir" \
-        "$genotype_prefix" \
-        "$plink_path" \
-        "$expression_file_path" \
-        "$fold" \
-        "$gene_info_file_path" \
-        "$scripts_dir" \
-        "$cleanup_matrixeqtl_raw")
-    bed_job_ids+=($jid)
-    echo "Submitted bed file job $jid for fold $fold"
+# --- 6.0_train_EGRET_models.sh ---------------------------------------------
+# Stage `models`. Builds the per-gene EGRET BED files for every fold, then chunks
+# the gene list and submits one 6.3 training job per chunk.
+#
+#   in : the three trans-eQTL bed trees; plink_results/{tissue}/cis/
+#   out: EGRET_models/{tissue}/{egret_subdir}/{gene}.wgt.RDat
+#   run: run_EGRET_workflow.sh, stage `models`
+# --------------------------------------------------------------------------
+set -euo pipefail
+# Locate workflow_lib.sh; see its header for why BASH_SOURCE alone is not enough.
+scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || scripts_dir=${EGRET_SCRIPTS_DIR:-${SLURM_SUBMIT_DIR:-}}
+[[ -r "${scripts_dir}/workflow_lib.sh" ]] || { echo "ERROR: cannot locate workflow_lib.sh (tried BASH_SOURCE, EGRET_SCRIPTS_DIR, SLURM_SUBMIT_DIR); export EGRET_SCRIPTS_DIR to the EGRET scripts directory" >&2; exit 1; }
+export EGRET_SCRIPTS_DIR="$scripts_dir"
+source "${scripts_dir}/workflow_lib.sh"
+USAGE="Usage: 6.0_train_EGRET_models.sh --tissue NAME --output_dir DIR --expression FILE --gene_info FILE --plink_path PATH --gemma_path PATH --bed_job_id_file FILE --job_id_file FILE --conda_env NAME --slurm_account NAME --slurm_partition NAME --slurm_log_dir DIR [options]"
+CLI_FLAGS=(--tissue --folds --plink_path --output_dir --matrixeqtl_bed_dir --gbat_bed_dir --transpco_bed_dir --exclude_crossmap --crossmap_dir --genotype_prefix --egret_subdir --fusion_models --bed_models --gemma_path --chunk_size --gene_info --expression --conda_env --slurm_account --slurm_partition --slurm_log_dir --bed_job_id_file --job_id_file --upstream_job_ids --cleanup_egret_plink --cleanup_egret_working --cleanup_egret_z_matrices --cleanup_bed_lists --cleanup_fold_expression)
+CLI_VARS=(tissue folds plink_path output_dir matrixeqtl_bed_dir gbat_bed_dir transpco_bed_dir exclude_crossmap crossmap_dir genotype_prefix egret_subdir fusion_models bed_models gemma_path chunk_size gene_info expression conda_env slurm_account slurm_partition slurm_log_dir bed_job_id_file job_id_file upstream_job_ids cleanup_egret_plink cleanup_egret_working cleanup_egret_z_matrices cleanup_bed_lists cleanup_fold_expression)
+CLI_REQUIRED=(tissue output_dir plink_path gemma_path gene_info expression conda_env slurm_account slurm_partition slurm_log_dir bed_job_id_file job_id_file)
+folds=5; matrixeqtl_bed_dir=results_FDR_0.1; gbat_bed_dir=results_FDR_0.1
+transpco_bed_dir=bed_files_FDR_0.1; exclude_crossmap=TRUE; crossmap_dir=background_mismatches
+genotype_prefix=GTEX_v8_genotypes_pruned; egret_subdir=EGRET; fusion_models=xtune,lasso,enet,blup
+bed_models=Cis,MatrixeQTL,GBAT,transPCO; chunk_size=500; upstream_job_ids=""
+cleanup_egret_plink=FALSE; cleanup_egret_working=FALSE; cleanup_egret_z_matrices=FALSE
+cleanup_bed_lists=FALSE; cleanup_fold_expression=FALSE
+parse_cli "$@"
+require_file "$expression" "regressed expression"
+bed_ids=()
+for ((fold=0; fold<=folds; fold++)); do
+    args=(--parsable --job-name="${tissue}_bed${fold}" --account="$slurm_account" \
+        --partition="$slurm_partition" --output="${slurm_log_dir}/make_EGRET_bed.%j.%N.out")
+    [[ -n "$upstream_job_ids" ]] && args+=(--dependency="afterok:${upstream_job_ids}")
+    jid=$(submit_with_retry "${args[@]}" "${scripts_dir}/6.1_run_make_EGRET_beds.sh" --tissue "$tissue" \
+        --output_dir "$output_dir" --matrixeqtl_bed_dir "$matrixeqtl_bed_dir" \
+        --gbat_bed_dir "$gbat_bed_dir" --transpco_bed_dir "$transpco_bed_dir" \
+        --egret_subdir "$egret_subdir" --exclude_crossmap "$exclude_crossmap" \
+        --crossmap_dir "$crossmap_dir" --genotype_prefix "$genotype_prefix" \
+        --plink_path "$plink_path" --expression "$expression" --fold "$fold" \
+        --gene_info "$gene_info" --bed_models "$bed_models" --conda_env "$conda_env" \
+        --cleanup_bed_lists "$cleanup_bed_lists" --cleanup_fold_expression "$cleanup_fold_expression")
+    [[ -n "$jid" ]] || cli_die "no job ID returned for bed fold $fold"
+    bed_ids+=("$jid")
 done
-echo "Submitted ${#bed_job_ids[@]} bed file jobs"
-
-# Build dependency string so model jobs wait for all bed file jobs
-dep_str=$(IFS=:; echo "${bed_job_ids[*]}")
-dependency="--dependency=afterok:${dep_str}"
-
-# Estimate gene count from expression file (upper bound)
-num_genes=$(zcat "${output_dir}/expression_files/${tissue}_expression.txt.gz" | tail -n +2 | wc -l)
-echo "Estimated gene count: $num_genes"
-
-num_chunks=$(((num_genes + chunk_size - 1) / chunk_size))
-echo "Submitting $num_chunks model chunks"
-
-# Loop through each chunk
-for ((i = 0; i < num_chunks; i++)); do
-        start_index=$((i * chunk_size))
-        end_index=$((start_index + chunk_size - 1))
-        sbatch $dependency ${slurm_log_dir:+--output=${slurm_log_dir}/gtex_xtune.%j.%N.out} ${scripts_dir}/14_create_EGRET_models.sh "$tissue" "$chunk_size" "$end_index" \
-            "$output_dir" "$egret_output_subdir" "$folds" "$plink_path" \
-            "$gemma_path" "$expression_file_path" "$fusion_models" "$gene_info_file_path" \
-            "$scripts_dir" "$cleanup_egret_plink" "$cleanup_egret_working"
+bed_dep=$(join_by_colon "${bed_ids[@]}")
+num_genes=$(zcat "$expression" | tail -n +2 | wc -l)
+write_job_ids "$bed_job_id_file" "${bed_ids[@]}"
+((num_genes > 0)) || cli_die "expression file contains no genes: $expression"
+num_chunks=$(((num_genes + chunk_size - 1) / chunk_size)); model_ids=()
+for ((i=0; i<num_chunks; i++)); do
+    start_index=$((i * chunk_size))
+    jid=$(submit_with_retry --parsable --job-name="${tissue}_mdl${i}" --account="$slurm_account" \
+        --partition="$slurm_partition" --dependency="afterok:${bed_dep}" \
+        --output="${slurm_log_dir}/gtex_xtune.%j.%N.out" "${scripts_dir}/6.3_train_EGRET_chunk.sh" \
+        --tissue "$tissue" --chunk_size "$chunk_size" --start_index "$start_index" \
+        --output_dir "$output_dir" --egret_subdir "$egret_subdir" --folds "$folds" \
+        --plink_path "$plink_path" --gemma_path "$gemma_path" --expression "$expression" \
+        --fusion_models "$fusion_models" --gene_info "$gene_info" --conda_env "$conda_env" \
+        --cleanup_egret_plink "$cleanup_egret_plink" --cleanup_egret_working "$cleanup_egret_working" \
+        --cleanup_egret_z_matrices "$cleanup_egret_z_matrices")
+    [[ -n "$jid" ]] || cli_die "no job ID returned for model chunk $i"
+    model_ids+=("$jid")
 done
+write_job_ids "$job_id_file" "${model_ids[@]}"

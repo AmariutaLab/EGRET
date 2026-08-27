@@ -1,3 +1,8 @@
+# --- davies.R --------------------------------------------------------------
+# Vendored. Davies' method for the distribution of a quadratic form in normal variables;
+# the PCO p-value depends on it. Calls the compiled qfc.so.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 davies <- function(q,lambda,h = rep(1,length(lambda)),delta = rep(0,length(lambda)),sigma=0,lim=10000,acc=0.0001) {
 
   r <- length(lambda)

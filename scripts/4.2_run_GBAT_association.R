@@ -1,8 +1,18 @@
+# --- 4.2_run_GBAT_association.R --------------------------------------------
+# Associates each gene's predicted cis expression against every other gene's
+# observed expression, per fold.
+#
+#   in : GBAT/{tissue}/fold_{i}/cis_predicted_expression.txt; fold train_expression.txt
+#   out: GBAT/{tissue}/fold_{i}/ association results
+#   run: 4.0_run_GBAT_stage.sh
+# --------------------------------------------------------------------------
 library('MatrixEQTL')
 library('data.table')
 library('optparse')
 
 option_list = list(
+  make_option("--folds", action="store", default=NA, type='numeric',
+              help="number of cross-validation folds"),
   make_option("--tissue", action="store",default=NA, type='character',
               help="tissue for analysis"),
   make_option("--output_dir", action="store",default=NA, type='character',
@@ -11,16 +21,16 @@ option_list = list(
 
 opt = parse_args(OptionParser(option_list=option_list))
 
-if (is.na(opt$tissue)) {
-        print("no tissue specified")
-        q()
-} else {
-        tissue = opt$tissue
-}
+
+required = c("folds", "tissue", "output_dir")
+missing = required[!vapply(required, function(o) length(opt[[o]]) == 1L && !is.na(opt[[o]]), logical(1))]
+if (length(missing)) stop("missing required argument(s): --", paste(missing, collapse = ", --"), call. = FALSE)
+
+tissue = opt$tissue
 
 cis_predicted_expression = fread(paste0(opt$output_dir,"/GBAT/",tissue,"/cis_predicted_expression.txt"), header = T)
 
-for (fold in 0:5) {
+for (fold in 0:opt$folds) {
 
 	target_gene_expression_file_name <- paste0(opt$output_dir,"/fold_", fold, "_info/",tissue,"/train_expression.txt")
 
@@ -36,7 +46,7 @@ for (fold in 0:5) {
     	# Load the file
     	target_gene_fold$LoadFile(target_gene_expression_file_name)
 
-        fold_individuals = fread(paste0(opt$output_dir,"/fold_",fold,"_info/",tissue,"/train_individuals.txt"),header = F)
+        fold_individuals = fread(paste0(opt$output_dir,"/fold_",fold,"_info/",tissue,"/train_individuals.txt"),header = F, colClasses = "character")
 	matched_cols <- match(paste0(unlist(fold_individuals$V1)), colnames(cis_predicted_expression))
 
 	# Remove NA values from matched indices

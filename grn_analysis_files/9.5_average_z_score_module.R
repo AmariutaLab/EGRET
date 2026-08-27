@@ -1,74 +1,111 @@
+# --- 9.5_average_z_score_module.R ------------------------------------------
+# GRN step 4. Compares mean TWAS Z per co-regulation module between the EGRET and cis
+# arms. Needs both arms' TWAS results, so 9.1 skips it when no GWAS directory is given.
+#
+#   in : grn_analysis/coregulation_grns/; TWAS_association_results/{tissue}/{EGRET,cis}/
+#   out: a per-module Z-score summary table
+#   run: 9.1_run_GRN_analysis.sh, only when --gwas_sumstat_dir is supplied
+# --------------------------------------------------------------------------
 library(data.table)
-library(enrichR)
+library(optparse)
 
-# List of 10 tissues
-tissues = c(
-  "Adipose_Visceral_Omentum", "Artery_Tibial", "Brain_Cortex",
-  "Colon_Transverse", "Esophagus_Mucosa", "Heart_Left_Ventricle",
-  "Lung", "Muscle_Skeletal", "Skin_Not_Sun_Exposed_Suprapubic",
-  "Whole_Blood"
-)
+option_list = list(
+  make_option("--tissues", action = "store", default = NA, type = 'character',
+              help = "comma-separated tissue names, or 'all' to sweep every tissue with a results_sumstats directory"),
+  make_option("--output_dir", action = "store", default = NA, type = 'character',
+              help = "Path to output directory"),
+  make_option("--egret_subdir", action = "store", default = NA, type = 'character',
+              help = "the name of the analysis"),
+  make_option("--gene_info", action = "store", default = NA, type = 'character',
+              help = "path to gene info file"),
+  make_option("--gwas_sumstat_dir", action = "store", default = NA, type = 'character',
+              help = "directory of GWAS *.sumstats.gz; the trait list is read from it"),
+  make_option("--gwas_traits", action = "store", default = "", type = 'character',
+              help = "optional comma-separated subset of trait file names, overriding --gwas_sumstat_dir's listing"),
+  make_option("--pval_threshold", action = "store", default = 0.01, type = 'numeric',
+              help = "trans-component significance threshold [default: %default]"),
+  make_option("--out", action = "store", default = "", type = 'character',
+              help = "output table [default: {output_dir}/grn_analysis/module_z_score_summary.txt]")
+  )
 
-tissues = c(
-  "Adipose_Subcutaneous","Adipose_Visceral_Omentum","Artery_Tibial","Brain_Cortex","Colon_Transverse",
-  "Esophagus_Mucosa","Heart_Left_Ventricle","Lung","Muscle_Skeletal","Skin_Not_Sun_Exposed_Suprapubic",
-  "Whole_Blood","Adrenal_Gland","Artery_Aorta","Artery_Coronary","Brain_Amygdala",
-  "Brain_Anterior_cingulate_cortex_BA24","Brain_Caudate_basal_ganglia","Brain_Cerebellar_Hemisphere",
-  "Brain_Cerebellum","Brain_Frontal_Cortex_BA9","Brain_Hippocampus","Brain_Hypothalamus",
-  "Brain_Nucleus_accumbens_basal_ganglia","Brain_Putamen_basal_ganglia",
-  "Brain_Spinal_cord_cervical_c-1","Brain_Substantia_nigra","Breast_Mammary_Tissue",
-  "Cells_Cultured_fibroblasts","Cells_EBV-transformed_lymphocytes","Colon_Sigmoid",
-  "Esophagus_Gastroesophageal_Junction","Esophagus_Muscularis","Heart_Atrial_Appendage",
-  "Kidney_Cortex","Liver","Minor_Salivary_Gland","Nerve_Tibial","Ovary","Pancreas","Pituitary",
-  "Prostate","Skin_Sun_Exposed_Lower_leg","Small_Intestine_Terminal_Ileum","Spleen",
-  "Stomach","Testis","Thyroid","Uterus","Vagina"
-)
+opt = parse_args(OptionParser(option_list = option_list))
 
-general_sumstats = c(
-  "PASS_IBD_deLange2017.sumstats.gz", "PASS_Rheumatoid_Arthritis.sumstats.gz", 
-  "UKB_460K.blood_PLATELET_COUNT.sumstats.gz", "UKB_460K.blood_RBC_DISTRIB_WIDTH.sumstats.gz", 
-  "UKB_460K.blood_RED_COUNT.sumstats.gz", "UKB_460K.blood_WHITE_COUNT.sumstats.gz", "UKB_460K.disease_ALLERGY_ECZEMA_DIAGNOSED.sumstats.gz", 
-  "UKB_460K.disease_HYPOTHYROIDISM_SELF_REP.sumstats.gz", "PASS_AtrialFibrillation_Nielsen2018.sumstats.gz", 
-  "PASS_HDL.sumstats.gz", "PASS_IschemicStroke_Malik2018.sumstats.gz", "PASS_LDL.sumstats.gz", 
-  "UKB_460K.biochemistry_Cholesterol.sumstats.gz", "UKB_460K.body_BMIz.sumstats.gz", 
-  "UKB_460K.bp_DIASTOLICadjMEDz.sumstats.gz"
-)
+output_dir = opt$output_dir
+project = opt$egret_subdir
 
-general_sumstats = c('UKB_460K.body_BMIz.sumstats.gz', 'UKB_460K.cov_EDU_YEARS.sumstats.gz', 'UKB_460K.lung_FVCzSMOKE.sumstats.gz', 'PASS_Intelligence_SavageJansen2018.sumstats.gz', 'UKB_460K.mental_NEUROTICISM.sumstats.gz', 'UKB_460K.bp_DIASTOLICadjMEDz.sumstats.gz', 'UKB_460K.blood_WHITE_COUNT.sumstats.gz', 'UKB_460K.body_HEIGHTz.sumstats.gz', 'UKB_460K.other_MORNINGPERSON.sumstats.gz', 'UKB_460K.repro_MENARCHE_AGE.sumstats.gz', 'UKB_460K.biochemistry_TotalProtein.sumstats.gz', 'UKB_460K.body_WHRadjBMIz.sumstats.gz', 'UKB_460K.lung_FEV1FVCzSMOKE.sumstats.gz', 'PASS_ReactionTime_Davies2018.sumstats.gz', 'PASS_Myopia_Hysi2020.sumstats.gz', 'UKB_460K.biochemistry_Creatinine.sumstats.gz', 'UKB_460K.blood_RED_COUNT.sumstats.gz', 'PASS_Schizophrenia_Pardinas2018.sumstats.gz', 'UKB_460K.blood_PLATELET_COUNT.sumstats.gz', 'UKB_460K.bmd_HEEL_TSCOREz.sumstats.gz', 'PASS_SleepDuration_Dashti2019.sumstats.gz', 'UKB_460K.biochemistry_IGF1.sumstats.gz', 'PASS_GeneralRiskTolerance_KarlssonLinner2019.sumstats.gz', 'PASS_Eosino_Vuckovic2020.sumstats.gz', 'UKB_460K.biochemistry_AspartateAminotransferase.sumstats.gz', 'UKB_460K.blood_RBC_DISTRIB_WIDTH.sumstats.gz', 'PASS_Insomnia_Jansen2019.sumstats.gz', 'PASS_Height1.sumstats.gz', 'PASS_LymP_Vuckovic2020.sumstats.gz', 'UKB_460K.repro_NumberChildrenEverBorn_Pooled.sumstats.gz', 'PASS_AtrialFibrillation_Nielsen2018.sumstats.gz', 'UKB_460K.biochemistry_Testosterone_Male.sumstats.gz', 'PASS_BMI1.sumstats.gz', 'UKB_460K.disease_HYPOTHYROIDISM_SELF_REP.sumstats.gz', 'PASS_AgeFirstBirth.sumstats.gz', 'PASS_Glaucoma_Craig2020.sumstats.gz', 'PASS_RTC_Vuckovic2020.sumstats.gz', 'UKB_460K.body_BALDING1.sumstats.gz', 'UKB_460K.biochemistry_AlkalinePhosphatase.sumstats.gz', 'UKB_460K.disease_ALLERGY_ECZEMA_DIAGNOSED.sumstats.gz', 'PASS_DrinksPerWeek_Liu2019.sumstats.gz', 'UKB_460K.biochemistry_Phosphate.sumstats.gz', 'PASS_MedicationUse_Wu2019.sumstats.gz', 'PASS_IBD_deLange2017.sumstats.gz', 'UKB_460K.biochemistry_VitaminD.sumstats.gz', 'PASS_MDD_Wray2018.sumstats.gz', 'PASS_RD_Zhao2021.sumstats.gz', 'UKB_460K.biochemistry_Cholesterol.sumstats.gz', 'PASS_ADHD_Demontis2018.sumstats.gz', 'PASS_MonoP_Vuckovic2020.sumstats.gz', 'UKB_460K.biochemistry_TotalBilirubin.sumstats.gz', 'UKB_460K.repro_MENOPAUSE_AGE.sumstats.gz', 'PASS_SA_Grasby2020.sumstats.gz', 'PASS_HipOA_Tachmazidou2019.sumstats.gz', 'PASS_AnorexiaNervosa_Watson2019.sumstats.gz', 'UKB_460K.pigment_SUNBURN.sumstats.gz', 'PASS_NumberChildrenEverBorn.sumstats.gz', 'PASS_BipolarDisorder_Ruderfer2018.sumstats.gz', 'PASS_Years_of_Education1.sumstats.gz', 'PASS_PancreasVol_Liu2021.sumstats.gz', 'PASS_HDL.sumstats.gz', 'PASS_CaudateVol_Satizabal2019.sumstats.gz', 'PASS_BrainstemVol_Satizabal2019.sumstats.gz', 'PASS_TH_Grasby2020.sumstats.gz', 'PASS_LDL.sumstats.gz', 'PASS_BasoP_Vuckovic2020.sumstats.gz', 'PASS_IschemicStroke_Malik2018.sumstats.gz', 'PASS_Anorexia.sumstats.gz', 'PASS_Alzheimers_deRojas2021.sumstats.gz', 'PASS_Rheumatoid_Arthritis.sumstats.gz', 'PASS_Ever_Smoked.sumstats.gz', 'PASS_MO_Zhao2021.sumstats.gz', 'PASS_ProstateCancer.sumstats.gz', 'UKB_460K.cancer_PROSTATE.sumstats.gz', 'PASS_AccumbensVol_Satizabal2019.sumstats.gz', 'UKB_460K.cancer_BREAST.sumstats.gz', 'PASS_Type_2_Diabetes.sumstats.gz', 'PASS_Autism.sumstats.gz')
+for (required in c("tissues", "output_dir", "egret_subdir", "gene_info", "gwas_sumstat_dir")) {
+  if (is.na(opt[[required]])) stop("missing required option: --", required)
+}
 
+# 'all' discovers tissues from what the analysis stage actually produced, rather than from a
+# hardcoded list that silently drifts out of step with the run.
+if (identical(opt$tissues, "all")) {
+  tissues = list.files(paste0(output_dir, "/results_sumstats/"))
+  if (length(tissues) == 0) stop("no tissues found under ", output_dir, "/results_sumstats/")
+} else {
+  tissues = trimws(strsplit(opt$tissues, ",")[[1]])
+}
 
-#general_sumstats = c(
-#  "PASS_IBD_deLange2017.sumstats.gz", "PASS_Rheumatoid_Arthritis.sumstats.gz", 
-#  "UKB_460K.blood_PLATELET_COUNT.sumstats.gz", "UKB_460K.blood_RBC_DISTRIB_WIDTH.sumstats.gz", 
-#  "UKB_460K.blood_RED_COUNT.sumstats.gz", "UKB_460K.blood_WHITE_COUNT.sumstats.gz", "PASS_LDL.sumstats.gz", 
-#  "UKB_460K.biochemistry_Cholesterol.sumstats.gz", "UKB_460K.body_BMIz.sumstats.gz"
-#)
+# The trait list is read from what is actually in gwas_sumstat_dir; --gwas_traits narrows
+# it to a subset, mirroring the workflow's own gwas_traits variable.
+if (nzchar(opt$gwas_traits)) {
+  general_sumstats = trimws(strsplit(opt$gwas_traits, ",")[[1]])
+} else {
+  general_sumstats = list.files(opt$gwas_sumstat_dir, pattern = "\\.sumstats\\.gz$")
+  if (length(general_sumstats) == 0) stop("no *.sumstats.gz found in ", opt$gwas_sumstat_dir)
+}
 
-gene_info = fread("../../data/GTEx_V8.txt.gz", header = TRUE)
-significant_results = data.frame(
+out_file = opt$out
+if (!nzchar(out_file)) out_file = paste0(output_dir, "/grn_analysis/module_z_score_summary.txt")
+dir.create(dirname(out_file), recursive = TRUE, showWarnings = FALSE)
+
+gene_info = fread(opt$gene_info, header = TRUE)
+all_results = data.frame(
   tissue = character(),
   trait = character(),
   module = character(),
-  pathway_name = character(),
-  p_value = numeric(),
-  overlap_genes = numeric(),
   avg_z_EGRET = numeric(),
   avg_z_cis = numeric(),
   num_trans_regulated = numeric(),
-  prop_trans_regulated = numeric()
+  prop_trans_regulated = numeric(),
+  module_size = numeric(),
+  t_test_p = numeric(),
+  wilcoxon_p = numeric()
 )
 
 for (tissue in tissues) {
-  model_performance = fread(paste0("../results_sumstats/",tissue,"/cis_MatrixeQTL_GBAT_transPCO_FDR_0.1.txt"), header = T)
+  # Guarded: with --tissues all, a tissue whose analysis stage has not run would otherwise
+  # abort the whole sweep. The trait loop below skips missing files the same way.
+  sumstats_path = paste0(output_dir, "/results_sumstats/", tissue, "/", project, ".txt")
+  if (!file.exists(sumstats_path)) {
+    message("Skipping ", tissue, " - no analysis summary at ", sumstats_path)
+    next
+  }
+  model_performance = fread(sumstats_path, header = T)
+
+  module_dir = paste0(output_dir, "/grn_analysis/coregulation_grns/", tissue, "/")
+  if (!dir.exists(module_dir)) {
+    message("Skipping ", tissue, " - no coregulation GRNs at ", module_dir)
+    next
+  }
+  modules = list.files(
+    module_dir,
+    pattern = "^coregulation_cluster_[0-9]+\\.txt$",
+    full.names = TRUE
+  )
+  if (length(modules) == 0) {
+    message("Skipping ", tissue, " - no coregulation cluster tables at ", module_dir)
+    next
+  }
 
   for (trait in general_sumstats) {
     trait_file = paste0(substr(trait, 1, nchar(trait) - 12), ".dat")
 	  print(trait_file)
-    TWAS_path = paste0("../TWAS_association_/results/", tissue, "/cis_MatrixeQTL_GBAT_transPCO_FDR_0.1/", trait_file)
-    cis_path = paste0("../TWAS_association_results/", tissue, "/cis/", trait_file)
+    TWAS_path = paste0(output_dir, "/TWAS_association_results/", tissue, "/", project, "/", trait_file)
+    cis_path = paste0(output_dir, "/TWAS_association_results/", tissue, "/cis/", trait_file)
 
     if (!file.exists(TWAS_path) || !file.exists(cis_path)) {
-      print("Skipping", trait, "TWAS results not present")
+      message("Skipping ", trait, " - TWAS results not present")
       next
     }
     TWAS_results = fread(TWAS_path, header = TRUE)
@@ -77,10 +114,9 @@ for (tissue in tissues) {
     TWAS_results[is.na(TWAS_results$TWAS.Z), "TWAS.Z"] = 0
     cis_TWAS_results[is.na(cis_TWAS_results$TWAS.Z), "TWAS.Z"] = 0
 
-    modules = list.files(paste0("coregulation_grns/",tissue,"/"))
-
-    for (module in modules) {
-      genes_in_module = fread(paste0("coregulation_grns/",tissue, "/", module), header = FALSE)
+    for (module_path in modules) {
+      module = basename(module_path)
+      genes_in_module = fread(module_path, header = FALSE)
       gene_ids = gene_info$name[gene_info$geneId %in% genes_in_module$V1]
 
       TWAS_module_subset = merge(TWAS_results, genes_in_module, by.x = 'ID', by.y = 'V1', all.y = TRUE)
@@ -132,41 +168,15 @@ for (tissue in tissues) {
       module_gene_performance = model_performance[gene %in% unlist(genes_in_module),]
       module_gene_performance$p_trans_part[is.na(module_gene_performance$p_trans_part)] = 1
 
-      num_trans_regulated = sum(module_gene_performance$p_trans_part < 0.01)
+      num_trans_regulated = sum(module_gene_performance$p_trans_part < opt$pval_threshold)
       prop_trans_regulated = num_trans_regulated/nrow(genes_in_module)
 
 
-      #dbs <- c("GO_Biological_Process_2023")
-      #result <- enrichr(gene_ids, dbs)
-      result = data.frame()
-      if (!is.null(result[["GO_Biological_Process_2023"]]) &&
-          nrow(result[["GO_Biological_Process_2023"]]) > 0) {
-
-        top_pathway <- result[["GO_Biological_Process_2023"]][
-          which.min(result[["GO_Biological_Process_2023"]]$Adjusted.P.value),
-        ]
-
-        adj_p <- top_pathway$Adjusted.P.value
-        overlap = as.numeric(strsplit(top_pathway$Overlap, "/")[[1]][1])
-      } else {
-        # Fallback when no enrichment results
-        adj_p <- 1
-        top_pathway <- data.frame(
-          Term = NA,
-          Adjusted.P.value = 1,
-          overlap = NA
-        )
-        adj_p <- top_pathway$Adjusted.P.value
-        overlap = top_pathway$overlap
-      }
-      significant_results = rbind(significant_results, 
+      all_results = rbind(all_results,
         data.frame(
           tissue = tissue,
 		      trait = trait_file,
           module = module,
-          pathway_name = top_pathway$Term,
-          p_value = adj_p,
-          overlap_genes = overlap,
           avg_z_EGRET = avg_z_EGRET,
           avg_z_cis = avg_z_cis,
           num_trans_regulated = num_trans_regulated,
@@ -181,4 +191,5 @@ for (tissue in tissues) {
   }
 }
 
-fwrite(significant_results, "coregulation_significant_enrichment_results_new.txt", sep = "\t", quote = FALSE, row.names = FALSE)
+fwrite(all_results, out_file, sep = "\t", quote = FALSE, row.names = FALSE)
+message("Wrote ", nrow(all_results), " rows to ", out_file)

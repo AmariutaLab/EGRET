@@ -1,3 +1,8 @@
+# --- FUSION.assoc_test_trans.R ---------------------------------------------
+# Vendored from FUSION (gusevlab.org/projects/fusion). Runs the TWAS association.
+# Local changes: accepts genome-wide (cis+trans) weight files, not cis-only.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 suppressMessages(library('plink2R'))
 suppressMessages(library("optparse"))
 

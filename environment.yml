@@ -1,4 +1,4 @@
-name: egret_env
+name: transTWAS_env
 channels:
   - conda-forge
   - r
@@ -18,3 +18,20 @@ dependencies:
   - r-tidyr
   - r-mclust
   - r-ggplot2
+  # Reached only through `mvtnorm::pmvnorm` (ModifiedPCOMerged.R:94) and
+  # `mvtnorm::rmvnorm` (ModifiedSigmaOEstimate.R:15). Both files are source()d
+  # unconditionally by 5.6_PCO_association_by_module.R, so the transPCO
+  # stage dies without this. Because the calls are `::` rather than library(), a sweep of
+  # library() calls does not find it -- do not drop it on that basis.
+  - r-mvtnorm
+
+  # Python packages -- required by grn_analysis_files/*.py (the GRN stage chained by
+  # 9.1_run_GRN_analysis.sh). Without these a fresh environment cannot run the GRN stage:
+  # 9.2_identify_trans_regulators.py imports pandas, pyreadr and scipy.spatial.KDTree, and the
+  # plotting scripts import matplotlib.
+  - python>=3.9
+  - pandas
+  - numpy
+  - scipy
+  - matplotlib
+  - pyreadr

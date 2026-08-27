@@ -1,3 +1,8 @@
+# --- liu.R -----------------------------------------------------------------
+# Vendored. Liu et al. moment-matching approximation, the PCO fallback when Davies' method
+# does not converge.
+# Kept close to upstream on purpose: do not restyle or renumber.
+# --------------------------------------------------------------------------
 liu <- function(q, lambda, h = rep(1,length(lambda)), delta = rep(0,length(lambda))) {
 
   r <- length(lambda)
