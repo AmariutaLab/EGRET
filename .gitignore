@@ -15,3 +15,38 @@ fold_4_info/
 fold_5_info/
 expression_files/
 results_sumstats/
+batch_submissions/
+scripts/batch_submissions/
+scripts/validation/
+scripts/test_output/
+scripts/LDREF/1000G.EUR.merged.*
+scripts/*.out
+*.orig
+__pycache__/
+*.pyc
+
+# --- publishing allowlist -------------------------------------------------
+# The repo root doubles as a working directory for ad-hoc analysis: ~130 one-off scripts,
+# figures, and multi-GB data archives (EGRET_TWAS_association_results.tar.gz alone is 1.1 GB,
+# well past GitHub's 100 MB per-file limit). Publish only the pipeline: ignore everything at
+# the top level, then re-admit the tracked files and the two code directories. New root-level
+# clutter is ignored by default; to publish something new, add a `!` line for it.
+/*
+!/.gitignore
+!/README.md
+!/environment.yml
+!/post_install.R
+!/scripts/
+!/grn_analysis_files/
+
+# Keep new GRN data and ad-hoc helpers out by default. Already tracked files remain tracked;
+# these exceptions admit the stage-9 chain and converter when cloning or rebuilding the index.
+/grn_analysis_files/*
+!/grn_analysis_files/9.2_identify_trans_regulators.py
+!/grn_analysis_files/9.3_assign_trans_regulators_with_eqtl.py
+!/grn_analysis_files/9.4_determine_grns.py
+!/grn_analysis_files/9.5_average_z_score_module.R
+!/grn_analysis_files/convert_variant_id_to_rsid.py
+
+scripts/*.ipynb
+scripts/CLAUDE.md
