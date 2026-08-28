@@ -19,3 +19,46 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+THIRD-PARTY COMPONENTS
+
+The license above covers EGRET's own code only. The components below are the work
+of others, are redistributed here for convenience, and remain under their upstream
+licenses. Nothing above relicenses them.
+
+  scripts/gemma-0.98.5-linux-static-AMD64
+      GEMMA (Zhou et al.), GPLv3.
+      https://github.com/genetics-statistics/GEMMA
+
+  scripts/gcta_nr_robust
+      GCTA (Yang et al.), GPLv3, as the modified build distributed with FUSION.
+      https://github.com/jianyangqt/gcta
+
+  scripts/FUSION.compute_weights.R
+  scripts/FUSION.assoc_test_trans.R
+      FUSION (Gusev et al.), modified. Local changes are noted in each file header.
+      http://gusevlab.org/projects/fusion/
+
+  scripts/LDREF/
+      1000 Genomes Phase 3 EUR LD reference panel, as distributed with FUSION.
+
+  scripts/davies.R
+  scripts/liu.R
+  scripts/liumod.R
+  scripts/qfc.so
+      Davies' and Liu et al. methods for the distribution of quadratic forms in
+      normal variables, from CompQuadForm.
+      https://cran.r-project.org/package=CompQuadForm
+
+  scripts/ModifiedPCOMerged.R
+  scripts/ModifiedSigmaOEstimate.R
+      trans-PCO, modified.
+      https://github.com/liliw-w/Trans
+
+GEMMA and GCTA are distributed under the GPLv3, which requires that corresponding
+source be made available; both are public at the URLs above. gcta_nr_robust is a
+modified GCTA build obtained from the FUSION distribution, and its specific patches
+are not published upstream. qfc.so is a compiled object whose source is in the
+CompQuadForm distribution.

@@ -37,7 +37,7 @@ grn_pval_threshold="0.01"
 # External programs
 plink_path="${_repo_dir}/plink2"
 plink1_path="/expanse/lustre/projects/ddp412/kbrunton/plink"
-gcta_path="/expanse/lustre/projects/ddp412/kbrunton/fusion_twas-master/gcta_nr_robust"
+gcta_path="${_scripts_dir}/gcta_nr_robust"
 gemma_path="${_scripts_dir}/gemma-0.98.5-linux-static-AMD64"
 
 # Tissue, models, and output layout

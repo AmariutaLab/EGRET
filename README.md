@@ -57,6 +57,7 @@ The following items are included:
 | Software or resource | Location |
 |---|---|
 | GEMMA 0.98.5 | `scripts/gemma-0.98.5-linux-static-AMD64` |
+| `gcta_nr_robust` | `scripts/gcta_nr_robust` |
 | FUSION R helpers | `scripts/FUSION.*.R` |
 | Davies method shared object | `scripts/qfc.so` |
 | 1000 Genomes EUR LD panels | `scripts/LDREF/1000G.EUR.{1..22}.*` |
@@ -67,7 +68,6 @@ You must provide:
 |---|---|---|
 | [PLINK 2](https://www.cog-genomics.org/plink/2.0/) | `plink_path` | Genotype preparation and extraction |
 | [PLINK 1.9](https://www.cog-genomics.org/plink/1.9/) | `plink1_path` | Cis-model training and merging the LD reference |
-| [`gcta_nr_robust`](https://github.com/gusevlab/fusion_twas) | `gcta_path` | FUSION cis-model training |
 | Conda and SLURM | n/a | Environment management and job submission |
 
 PLINK 2 and `plink2R-master/` are intentionally ignored by Git, so a fresh clone will not contain them. After installing PLINK 1.9, merge the chromosome-specific LD files once:
@@ -243,4 +243,4 @@ Rscript scripts/tests/test_numerical_equivalence.R
 
 ## License
 
-EGRET's original code is available under the [MIT License](LICENSE). Bundled third-party software, reference data, and adapted statistical routines remain under their upstream terms.
+EGRET's original code is available under the [MIT License](LICENSE). The bundled GEMMA binary, FUSION scripts, `LDREF/` panel, CompQuadForm routines, and trans-PCO scripts remain under their upstream licenses; see the third-party section of [LICENSE](LICENSE).
