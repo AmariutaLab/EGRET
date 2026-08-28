@@ -53,13 +53,6 @@ gbat_bed_dir="results_FDR_0.1"
 transpco_bed_dir="bed_files_FDR_0.1"
 exclude_crossmap="TRUE"
 crossmap_dir="background_mismatches"
-# Consumed by the manual cross-mappability prep step, which must be run once per output_dir
-# before the models stage whenever exclude_crossmap=TRUE (the BED files are not bundled):
-#   Rscript 0.1_make_crossmappable_gene_beds.R --gene_info "$gene_info" \
-#       --crossmap_file "$crossmap_file" --output_dir "$output_dir" \
-#       --crossmap_dir "$crossmap_dir"
-# Skipping this prep step is a hard error in 6.2, not a silent fall-through.
-crossmap_file="cross_mappability.tsv.gz"
 covariate_columns_for_coexpression="PC1 PC2 PC3 PC4 PC5 InferredCov1 InferredCov2 InferredCov3 InferredCov4 InferredCov5 InferredCov6 InferredCov7 InferredCov8 InferredCov9 InferredCov10 pcr platform sex"
 
 # Stage selection. EGRET_STAGES lets a resumed run re-enter partway through. Skipped

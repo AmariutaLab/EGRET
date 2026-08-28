@@ -44,7 +44,16 @@ For an existing environment:
 conda env update -n egret_env -f environment.yml
 ```
 
-`post_install.R` installs packages that are not supplied through Conda. It installs plink2R from a local `plink2R-master/` directory when available and otherwise uses GitHub. The script stops if plink2R cannot be installed because several pipeline stages require it.
+`post_install.R` installs the packages Conda does not supply: `xtune`, `ACAT`, and `plink2R`. Run it from the repository root.
+
+`plink2R` is not on CRAN. `post_install.R` installs it from GitHub, or from a local `plink2R-master/plink2R/` directory if one exists. To supply that local copy:
+
+```bash
+wget https://github.com/gabraham/plink2R/archive/master.zip
+unzip master.zip
+```
+
+The script stops if `plink2R` is still missing, because several stages require it.
 
 The workflow assumes a SLURM cluster. Each job activates the environment named by `conda_env`, which defaults to `egret_env`, so it must be visible from compute nodes.
 
@@ -90,7 +99,7 @@ Set the corresponding paths in `scripts/config.sh`:
 | Covariates | `covariates` | Setup, cis models, and trans-PCO |
 | Gene annotation | `gene_info` | All analysis branches |
 | GWAS summary statistics | `gwas_sumstat_dir`, `gwas_sumstats` | TWAS and GRN |
-| Cross-mappability table | `crossmap_file` | Models when `exclude_crossmap="TRUE"` |
+| Cross-mappability table | n/a — passed to `0.1_make_crossmappable_gene_beds.R` | Models when `exclude_crossmap="TRUE"` |
 | Tissue-matched eQTL table | `eqtl_file` | GRN only |
 
 GTEx data are access-controlled and are not included. The validation utility creates a small test dataset by subsetting the inputs configured in `config.sh`; it is not a standalone public dataset.

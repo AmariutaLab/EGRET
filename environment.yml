@@ -15,6 +15,7 @@ dependencies:
   - r-glmnet
   - r-matrixeqtl
   - r-devtools
+  - r-remotes
   - r-tidyr
   - r-mclust
   - r-ggplot2

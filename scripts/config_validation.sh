@@ -62,7 +62,6 @@ gbat_bed_dir="results_FDR_0.1"
 transpco_bed_dir="bed_files_FDR_0.1"
 exclude_crossmap="FALSE"
 crossmap_dir="background_mismatches"
-crossmap_file="cross_mappability.tsv.gz"
 covariate_columns_for_coexpression="PC1 PC2 PC3 PC4 PC5 InferredCov1 InferredCov2 InferredCov3 InferredCov4 InferredCov5 InferredCov6 InferredCov7 InferredCov8 InferredCov9 InferredCov10 pcr platform sex"
 
 # Stage selection. Skipped stages still have their outputs asserted, so a typo in this
