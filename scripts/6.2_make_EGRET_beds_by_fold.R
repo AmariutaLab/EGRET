@@ -118,6 +118,13 @@ record_final_matches = function(ids, source_name, final_ids) {
 	}
 }
 
+plink_left_nothing = function(log_path) {
+	if (!file.exists(log_path)) return(FALSE)
+	any(grepl("No variants remaining after main filters",
+		readLines(log_path, warn = FALSE), fixed = TRUE))
+}
+num_empty = 0L
+
 matched_bed = function(ids) {
 	idx = match(ids, allsnps$V2, nomatch=0L)
 	idx = idx[idx > 0L]
@@ -195,6 +202,12 @@ for (gene in genes) {
 	plink_out = paste0(plink_output_dir, gene_name)
 	status = system2(opt$plink_path, args = c(plink_args, "--out", shQuote(plink_out)))
 	if (status != 0) {
+		if (plink_left_nothing(paste0(plink_out, ".log"))) {
+			message(sprintf("Skipping %s fold_%s: no SNPs remained after extraction", gene_name, fold))
+			num_empty = num_empty + 1L
+			if (opt$cleanup_bed_lists) { unlink(paste0(bed_file_dir,gene)) }
+			next
+		}
 		stop(sprintf("PLINK EGRET extraction failed for %s fold_%s with exit status %s",
 		             gene_name, fold, status))
 	}
@@ -239,6 +252,8 @@ for (gene in genes) {
 	dir.create(z_matrix_dir, recursive = T,showWarnings = FALSE)
 	fwrite(z_matrix,paste0(z_matrix_dir,gene_name,"_z_matrix.txt"),sep = '\t',col.names = F,row.names = F,quote=F)
 }
+
+message(sprintf("fold %s: %d gene(s) skipped for an empty SNP set", fold, num_empty))
 
 missing_sources = character(0)
 for (src in trans_sources) {

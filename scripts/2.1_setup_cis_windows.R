@@ -45,6 +45,13 @@ manifest = file.path(plink_dir, "cis_genes.txt")
 if (file.exists(manifest)) file.remove(manifest)
 completed_genes = character(length(genes))
 num_completed = 0L
+num_empty = 0L
+
+plink_left_nothing = function(log_path) {
+	if (!file.exists(log_path)) return(FALSE)
+	any(grepl("No variants remaining after main filters",
+		readLines(log_path, warn = FALSE), fixed = TRUE))
+}
 
 for (gene in genes) {
 	gene_info = all_gene_info[match(gene, all_gene_info$geneId)]
@@ -67,8 +74,17 @@ for (gene in genes) {
 	plink_out = file.path(plink_dir, gene)
 	status = system2(opt$plink_path, args = c("--bfile", shQuote(bfile), "--extract", "bed1",
 		shQuote(bed_file), "--make-bed", "--out", shQuote(plink_out)))
-	if (status != 0) stop("PLINK cis-window extraction failed for ", gene,
-		" with exit status ", status, call. = FALSE)
+	plink_log = paste0(plink_out, ".log")
+	if (status != 0) {
+		if (plink_left_nothing(plink_log)) {
+			message("Skipping ", gene, ": no genotyped SNPs in the cis window")
+			num_empty = num_empty + 1L
+			file.remove(plink_log)
+			next
+		}
+		stop("PLINK cis-window extraction failed for ", gene,
+			" with exit status ", status, call. = FALSE)
+	}
 	outputs = paste0(plink_out, c(".bed", ".bim", ".fam"))
 	missing_outputs = outputs[!file.exists(outputs) | file.info(outputs)$size == 0]
 	if (length(missing_outputs)) stop("PLINK cis-window extraction for ", gene,
@@ -79,4 +95,6 @@ for (gene in genes) {
 }
 
 if (num_completed == 0) stop("no autosomal cis-window genotype files were produced", call. = FALSE)
+message(sprintf("cis windows: %d genes extracted, %d skipped for an empty cis window",
+	num_completed, num_empty))
 writeLines(sort(unique(completed_genes[seq_len(num_completed)])), manifest)
