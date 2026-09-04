@@ -69,6 +69,8 @@ else
         require_file "${output_dir}/TWAS_association_results/${tissue}/${egret_subdir}/${trait}.dat" "EGRET TWAS result for $trait"
         require_file "${output_dir}/TWAS_association_results/${tissue}/cis/${trait}.dat" "cis TWAS result for $trait"
     done
+    # 9.5 defaults to a single grn_analysis/module_z_score_summary.txt. This chain runs one
+    # tissue at a time, so without a per-tissue name each run silently overwrites the last.
     Rscript "${grn_scripts_dir}/9.5_average_z_score_module.R" \
         --tissues "$tissue" \
         --output_dir "$output_dir" \
@@ -76,5 +78,6 @@ else
         --gene_info "$gene_info" \
         --gwas_sumstat_dir "$gwas_sumstat_dir" \
         --gwas_traits "$gwas_traits" \
-        --pval_threshold "$pval_threshold"
+        --pval_threshold "$pval_threshold" \
+        --out "${output_dir}/grn_analysis/module_z_score_summary_${tissue}.txt"
 fi
