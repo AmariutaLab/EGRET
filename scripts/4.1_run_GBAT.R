@@ -69,7 +69,7 @@ for (trans_gene in trans_genes) {
     non_zero_weights = weights[!is.na(weights) & weights != 0]
 
     if (length(non_zero_weights) == 0) {
-        cat("Skipping", gene, "- no non-zero weights\n")
+        cat("Skipping", gene_name, "- no non-zero weights\n")
         next
     }
 
@@ -83,7 +83,7 @@ for (trans_gene in trans_genes) {
     # Guard the object actually written, not `weights`.
     snp_ids = names(non_zero_weights)
     if (is.null(snp_ids) || !any(nzchar(snp_ids) & !is.na(snp_ids))) {
-        cat("Skipping", gene, "- no usable SNP IDs on the non-zero weights\n")
+        cat("Skipping", gene_name, "- no usable SNP IDs on the non-zero weights\n")
         next
     }
     fwrite(as.matrix(snp_ids), paste0(bed_file_dir,"/",gene_name,".txt"), row.names = F, col.names = F, quote = F)
