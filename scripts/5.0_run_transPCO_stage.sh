@@ -16,10 +16,14 @@ scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
 export EGRET_SCRIPTS_DIR="$scripts_dir"
 source "${scripts_dir}/workflow_lib.sh"
 USAGE="Usage: 5.0_run_transPCO_stage.sh --tissue NAME --folds N --fdr VALUE --covariate_columns LIST --gene_info FILE --plink_path PATH --output_dir DIR --conda_env NAME --slurm_account NAME --slurm_partition NAME --slurm_log_dir DIR --matrix_job_id_file FILE --pco_job_id_file FILE --job_id_file FILE [options]"
-CLI_FLAGS=(--tissue --folds --fdr --covariate_columns --gene_info --plink_path --output_dir --genotype_prefix --conda_env --slurm_account --slurm_partition --slurm_log_dir --matrix_job_id_file --pco_job_id_file --job_id_file --cleanup_transpco_raw)
-CLI_VARS=(tissue folds fdr covariate_columns gene_info plink_path output_dir genotype_prefix conda_env slurm_account slurm_partition slurm_log_dir matrix_job_id_file pco_job_id_file job_id_file cleanup_transpco_raw)
+CLI_FLAGS=(--tissue --folds --fdr --covariate_columns --gene_info --plink_path --output_dir --genotype_prefix --conda_env --slurm_account --slurm_partition --slurm_log_dir --matrix_job_id_file --pco_job_id_file --job_id_file --bed_dir --cleanup_transpco_raw)
+CLI_VARS=(tissue folds fdr covariate_columns gene_info plink_path output_dir genotype_prefix conda_env slurm_account slurm_partition slurm_log_dir matrix_job_id_file pco_job_id_file job_id_file bed_dir cleanup_transpco_raw)
 CLI_REQUIRED=(tissue folds fdr covariate_columns gene_info plink_path output_dir conda_env slurm_account slurm_partition slurm_log_dir matrix_job_id_file pco_job_id_file job_id_file)
 genotype_prefix=GTEX_v8_genotypes_pruned; cleanup_transpco_raw=FALSE
+# Where 5.8 writes the per-gene BEDs. Passed straight through to 5.7, which substitutes the
+# historical bed_files_FDR_{fdr} when this is empty. The caller must be able to set it: 6.2
+# reads the BEDs back from the config's transpco_bed_dir.
+bed_dir=""
 parse_cli "$@"; activate_workflow_env "$conda_env"
 Rscript "${scripts_dir}/5.1_run_WGCNA_clustering.R" \
     --expression "${output_dir}/expression_files/${tissue}_expression.txt.gz" --output_dir "$output_dir" \
@@ -71,6 +75,7 @@ final_jid=$(submit_with_retry --parsable --job-name="${tissue}_transpco_results"
     "${scripts_dir}/5.7_run_results_analysis_job.sh" --tissue "$tissue" --fdr "$fdr" \
     --output_dir "$output_dir" --folds "$folds" --expected_module_count "${#modules[@]}" \
     --genotype_prefix "$genotype_prefix" --conda_env "$conda_env" \
+    --bed_dir "$bed_dir" \
     --cleanup_transpco_raw "$cleanup_transpco_raw")
 [[ -n "$final_jid" ]] || cli_die "no job ID returned for transPCO results analysis"
 write_job_ids "$job_id_file" "$final_jid"

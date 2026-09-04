@@ -22,12 +22,15 @@ scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
 [[ -r "${scripts_dir}/workflow_lib.sh" ]] || { echo "ERROR: cannot locate workflow_lib.sh (tried BASH_SOURCE, EGRET_SCRIPTS_DIR, SLURM_SUBMIT_DIR); export EGRET_SCRIPTS_DIR to the EGRET scripts directory" >&2; exit 1; }
 export EGRET_SCRIPTS_DIR="$scripts_dir"
 source "${scripts_dir}/workflow_lib.sh"
-USAGE="Usage: 5.7_run_results_analysis_job.sh --tissue NAME --fdr VALUE --output_dir DIR --folds N --expected_module_count N --genotype_prefix PREFIX --conda_env NAME [options]"
-CLI_FLAGS=(--tissue --fdr --output_dir --folds --expected_module_count --genotype_prefix --conda_env --cleanup_transpco_raw)
-CLI_VARS=(tissue fdr output_dir folds expected_module_count genotype_prefix conda_env cleanup_transpco_raw)
+USAGE="Usage: 5.7_run_results_analysis_job.sh --tissue NAME --fdr VALUE --output_dir DIR --folds N --expected_module_count N --genotype_prefix PREFIX --conda_env NAME [--bed_dir NAME] [options]"
+CLI_FLAGS=(--tissue --fdr --output_dir --folds --expected_module_count --genotype_prefix --conda_env --bed_dir --cleanup_transpco_raw)
+CLI_VARS=(tissue fdr output_dir folds expected_module_count genotype_prefix conda_env bed_dir cleanup_transpco_raw)
 CLI_REQUIRED=(tissue fdr output_dir folds expected_module_count genotype_prefix conda_env)
+# Must agree with the caller's transpco_bed_dir: 6.2 reads the BEDs back from that name.
+bed_dir=""
 cleanup_transpco_raw=FALSE
 parse_cli "$@"; activate_workflow_env "$conda_env"
+[[ -n "$bed_dir" ]] || bed_dir="bed_files_FDR_${fdr}"
 [[ "$expected_module_count" =~ ^[1-9][0-9]*$ ]] ||
     cli_die "--expected_module_count must be a positive integer"
 module_names=()
@@ -54,7 +57,7 @@ for ((fold=0; fold<=folds; fold++)); do
         module_name=${module%%.*}
         # 5.6 skips any module with fewer than 2 genes -- PCO is a multivariate test and is
         # undefined on a single gene -- so requiring a result for one is a guaranteed stage
-        # failure. WGCNA emits these routinely. Mirror that rule.
+        # failure. WGCNA emits these routinely (4 across folds 1 and 2 here). Mirror that rule.
         gene_count=$(grep -c '[^[:space:]]' "$module_file" || true)
         ((gene_count >= 2)) || continue
         has_result=0
@@ -67,7 +70,7 @@ done
 ((${#missing_results[@]} == 0)) ||
     cli_die "missing PCO results for ${missing_results[*]}"
 Rscript "${scripts_dir}/5.8_make_transPCO_bed_by_FDR.R" --tissue "$tissue" --FDR "$fdr" \
-    --output_dir "$output_dir" --folds "$folds" --bed_dir "bed_files_FDR_${fdr}" \
+    --output_dir "$output_dir" --folds "$folds" --bed_dir "$bed_dir" \
     --PCO_association_dir PCO_association_results --module_dir modules --genotype_prefix "$genotype_prefix"
 # Cleanup: the dependency-gated end of the transPCO branch, so the first point at which the
 # per-module scratch is safe to drop. genotype_files and expression_files are shared across

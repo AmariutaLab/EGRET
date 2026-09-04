@@ -252,6 +252,7 @@ if stage_enabled transpco; then
         --slurm_log_dir "$run_log_dir" \
         --matrix_job_id_file "${job_id_dir}/transpco_matrix.jids" \
         --pco_job_id_file "${job_id_dir}/transpco_pco.jids" --job_id_file "$transpco_file" \
+        --bed_dir "$transpco_bed_dir" \
         --cleanup_transpco_raw "$cleanup_transpco_raw"
     transpco_ids=$(read_job_ids "$transpco_file")
 elif stage_enabled models && model_uses_source transPCO; then
