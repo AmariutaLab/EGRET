@@ -61,7 +61,12 @@ for (trans_gene in trans_genes) {
 	print(paste("the r2 is",cv.performance[1,1]))
 
  	weights = wgt.matrix[, c('lasso')]
-    non_zero_weights = weights[weights != 0]
+    # `weights != 0` is NA wherever a weight is NA, and subsetting by a logical containing NA
+    # returns an NA element per NA index -- with an NA name. A model whose lasso weights are
+    # entirely NA (32 of 1529 gate-passing genes here) therefore sailed past the length guard
+    # below and wrote a file of blank lines, which PLINK --extract rejects with exit 13,
+    # killing the whole GBAT job. Drop the NAs before testing anything.
+    non_zero_weights = weights[!is.na(weights) & weights != 0]
 
     if (length(non_zero_weights) == 0) {
         cat("Skipping", gene, "- no non-zero weights\n")
@@ -75,8 +80,13 @@ for (trans_gene in trans_genes) {
 	dir.create(bed_file_dir,recursive = T)
 	dir.create(plink_output_dir,recursive = T)
 
-    if(is.null(names(weights))) {next}
-    fwrite(as.matrix(names(non_zero_weights)), paste0(bed_file_dir,"/",gene_name,".txt"), row.names = F, col.names = F, quote = F)
+    # Guard the object actually written, not `weights`.
+    snp_ids = names(non_zero_weights)
+    if (is.null(snp_ids) || !any(nzchar(snp_ids) & !is.na(snp_ids))) {
+        cat("Skipping", gene, "- no usable SNP IDs on the non-zero weights\n")
+        next
+    }
+    fwrite(as.matrix(snp_ids), paste0(bed_file_dir,"/",gene_name,".txt"), row.names = F, col.names = F, quote = F)
 
 	plink_out = paste0(plink_output_dir, gene_name)
 	status = system2(opt$plink_path, args = c("--bfile", shQuote(opt$genotype_prefix),
