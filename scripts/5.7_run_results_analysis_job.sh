@@ -52,6 +52,11 @@ for ((fold=0; fold<=folds; fold++)); do
         [[ -s "$module_file" ]] || continue
         module=$(basename "$module_file")
         module_name=${module%%.*}
+        # 5.6 skips any module with fewer than 2 genes -- PCO is a multivariate test and is
+        # undefined on a single gene -- so requiring a result for one is a guaranteed stage
+        # failure. WGCNA emits these routinely. Mirror that rule.
+        gene_count=$(grep -c '[^[:space:]]' "$module_file" || true)
+        ((gene_count >= 2)) || continue
         has_result=0
         for result_file in "${pco_dir}/${module_name}_chr_"*.txt.gz; do
             [[ -s "$result_file" ]] && { has_result=1; break; }
