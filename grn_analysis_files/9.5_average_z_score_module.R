@@ -99,8 +99,12 @@ for (tissue in tissues) {
   }
 
   for (trait in general_sumstats) {
-    trait_file = paste0(substr(trait, 1, nchar(trait) - 12), ".dat")
-	  print(trait_file)
+    # Mirror how 8.0/8.1 name the file they wrote: trait=${gwas_file%%.sumstats.gz}, a suffix
+    # strip. This was an unconditional 12-character chop, which mismatched every trait name not
+    # ending in ".sumstats.gz" -- the loop below then skipped all of them and the script still
+    # exited 0, so the summary came out empty rather than failing.
+    trait_file = paste0(sub("\\.sumstats\\.gz$", "", trait), ".dat")
+    print(trait_file)
     TWAS_path = paste0(output_dir, "/TWAS_association_results/", tissue, "/", project, "/", trait_file)
     cis_path = paste0(output_dir, "/TWAS_association_results/", tissue, "/cis/", trait_file)
 
@@ -110,6 +114,23 @@ for (tissue in tissues) {
     }
     TWAS_results = fread(TWAS_path, header = TRUE)
     cis_TWAS_results = fread(cis_path, header = TRUE)
+
+    # One Z per gene per arm. A .pos file listing the same weight file more than once (as the
+    # pre-2026-08 pos scripts did, emitting duplicate rows with mismatched coordinates) makes
+    # FUSION repeat that model's result verbatim. The merges below are all.y on the module gene
+    # list, so unequal duplication between the arms desynchronises the paired vectors and trips
+    # the stopifnot. Deduplication is lossless here: repeated rows for a gene are the same
+    # model and carry an identical TWAS.Z.
+    for (arm in c("EGRET", "cis")) {
+      results = if (arm == "EGRET") TWAS_results else cis_TWAS_results
+      n_dup = nrow(results) - uniqueN(results$ID)
+      if (n_dup > 0) {
+        message("  ", trait, " (", arm, "): dropping ", n_dup,
+                " duplicate gene rows, keeping one per ID")
+        results = unique(results, by = "ID")
+        if (arm == "EGRET") TWAS_results = results else cis_TWAS_results = results
+      }
+    }
 
     TWAS_results[is.na(TWAS_results$TWAS.Z), "TWAS.Z"] = 0
     cis_TWAS_results[is.na(cis_TWAS_results$TWAS.Z), "TWAS.Z"] = 0
