@@ -73,15 +73,22 @@ for (i in 0:cross_val_folds) {
 		stop(sprintf("PLINK fold extraction did not create a complete fileset for fold_%s", i))
 	}
 
+	# One copy of this matrix is individuals x pruned SNPs of doubles -- 3.1 GB at 750 x 514k.
+	# The scale/transpose/data.table chain makes several, and R only frees the previous fold's
+	# when the name is rebound, so without dropping each copy as soon as the next one exists the
+	# loop carries three matrices from fold i-1 into fold i's allocations and OOMs the driver on
+	# the last fold (observed: 28.6 GB against --mem=30G). Output is unchanged: scale() and t()
+	# both preserve dimnames, so the rownames() assignment below stays a no-op safeguard.
 	genotypes = read_plink(plink_out,impute='avg')
-	genotypes$bed = scale(genotypes$bed)
-
-	rownames = colnames(genotypes$bed)
-	genotypes_transposed = t(genotypes$bed)
-	rownames(genotypes_transposed) = rownames
+	snp_ids = colnames(genotypes$bed)
+	genotypes_transposed = t(scale(genotypes$bed))
+	rm(genotypes); gc()
+	rownames(genotypes_transposed) = snp_ids
 	genotypes_transposed_dt = as.data.table(genotypes_transposed, keep.rownames = "SNP")
+	rm(genotypes_transposed); gc()
 
 	fwrite(genotypes_transposed_dt,paste0(output_dir,"/train_genotypes.txt"),row.names = F,col.names = T,quote = F, sep = '\t')
+	rm(genotypes_transposed_dt); gc()
 
 	# The binary set exists only for the read_plink() above; the dense-text
 	# train_genotypes.txt is what MatrixeQTL consumes. 3.0 cleans that one up later.
