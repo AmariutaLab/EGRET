@@ -44,9 +44,32 @@ expression_file = expression_file[, c("gene_id", individuals), with = FALSE]
 
 #filter out genes which do not have gene info and genes which are not protein coding, lincRNA, or antisense RNA
 all_gene_info = fread(opt$gene_info,header = T)
-expression_file$geneType = all_gene_info$geneType[match(expression_file$gene_id,all_gene_info$geneId)]
-expression_file = expression_file[expression_file$geneType == 'protein_coding' | expression_file$geneType == 'lincRNA' | expression_file$geneType == 'antisense']
-expression_file = expression_file[,-c("geneType")]
+gene_row = match(expression_file$gene_id, all_gene_info$geneId)
+expression_file$geneType = all_gene_info$geneType[gene_row]
+
+# Autosomes only. 2.1 already skips X and Y when building cis windows and calls its expected
+# output "autosomal", but nothing kept non-autosomal genes out of the matrix in the first place.
+# chrM mattered most: those genes are protein_coding, so they passed the type filter, and a
+# nuclear genotype panel carries no chrM variants -- so they reached the models with an empty cis
+# partition and a trans-only fit. They then dominated the trans results (r2 ~30-80x the
+# genome-wide median) and formed co-regulation modules whose cis comparator was zero by
+# construction, which 9.5 scores as EGRET beating cis. Dropping them here keeps them out of every
+# downstream stage -- trans screens, WGCNA modules, EGRET models, TWAS and the GRN chain -- rather
+# than half-present. Accepts either "#chrom" or "chrom", with or without the "chr" prefix.
+chrom_col = grep("^#?chrom$", names(all_gene_info), value = TRUE)
+if (length(chrom_col) != 1) {
+	stop("gene info file needs exactly one chrom column, found: ",
+		paste(names(all_gene_info), collapse = ", "), call. = FALSE)
+}
+expression_file$chrom = sub("^chr", "", as.character(all_gene_info[[chrom_col[1]]][gene_row]))
+
+n_before = nrow(expression_file)
+expression_file = expression_file[expression_file$geneType %in% c('protein_coding', 'lincRNA', 'antisense') &
+	expression_file$chrom %in% as.character(1:22)]
+message(sprintf("gene filter: %d of %d genes retained (protein_coding/lincRNA/antisense on chr1-22)",
+	nrow(expression_file), n_before))
+if (nrow(expression_file) == 0) stop("no genes remain after the gene type / autosome filter", call. = FALSE)
+expression_file = expression_file[,-c("geneType","chrom")]
 
 # create directory to write expression
 dir.create(paste0(opt$output_dir,"/expression_files/"),recursive = T)
