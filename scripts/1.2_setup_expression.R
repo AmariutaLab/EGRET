@@ -63,11 +63,21 @@ if (length(chrom_col) != 1) {
 }
 expression_file$chrom = sub("^chr", "", as.character(all_gene_info[[chrom_col[1]]][gene_row]))
 
+# An autosome is a numerically-named chromosome. Testing the label rather than whitelisting 1:22
+# keeps this correct for any assembly -- mouse has 19 autosomes, dog 38 -- while still dropping
+# sex chromosomes (X/Y, or Z/W), the mitochondrion (M/MT), unplaced scaffolds, alt haplotypes,
+# and any gene missing from the annotation (chrom is NA, which fails the test).
+is_autosome = !is.na(expression_file$chrom) & grepl("^[0-9]+$", expression_file$chrom)
+dropped_chroms = sort(unique(expression_file$chrom[!is_autosome & !is.na(expression_file$chrom)]))
+
 n_before = nrow(expression_file)
 expression_file = expression_file[expression_file$geneType %in% c('protein_coding', 'lincRNA', 'antisense') &
-	expression_file$chrom %in% as.character(1:22)]
-message(sprintf("gene filter: %d of %d genes retained (protein_coding/lincRNA/antisense on chr1-22)",
+	is_autosome]
+message(sprintf("gene filter: %d of %d genes retained (protein_coding/lincRNA/antisense on autosomes)",
 	nrow(expression_file), n_before))
+if (length(dropped_chroms)) {
+	message("  non-autosomal chromosomes dropped: ", paste(dropped_chroms, collapse = ", "))
+}
 if (nrow(expression_file) == 0) stop("no genes remain after the gene type / autosome filter", call. = FALSE)
 expression_file = expression_file[,-c("geneType","chrom")]
 
