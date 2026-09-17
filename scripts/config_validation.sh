@@ -54,6 +54,10 @@ egret_subdir="EGRET"
 folds="5"
 ld_prune_r2="0.9"
 fdr="0.1"
+# Total width of the cis region, halved to a +/- half-width by every consumer
+# (2.1, 3.2, 4.3, 6.2). 1000000 = TSS +/-500kb, the human default. Populations with
+# longer-range LD want this wider -- HS rats use 2000000 (TSS +/-1Mb).
+cis_window_size="1000000"
 chunk_size="300"
 bed_models="Cis,MatrixeQTL,GBAT,transPCO"
 fusion_models="xtune,lasso,enet,blup"

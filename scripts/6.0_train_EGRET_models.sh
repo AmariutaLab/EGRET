@@ -14,14 +14,15 @@ scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
 [[ -r "${scripts_dir}/workflow_lib.sh" ]] || { echo "ERROR: cannot locate workflow_lib.sh (tried BASH_SOURCE, EGRET_SCRIPTS_DIR, SLURM_SUBMIT_DIR); export EGRET_SCRIPTS_DIR to the EGRET scripts directory" >&2; exit 1; }
 export EGRET_SCRIPTS_DIR="$scripts_dir"
 source "${scripts_dir}/workflow_lib.sh"
-USAGE="Usage: 6.0_train_EGRET_models.sh --tissue NAME --output_dir DIR --expression FILE --gene_info FILE --plink_path PATH --gemma_path PATH --bed_job_id_file FILE --job_id_file FILE --conda_env NAME --slurm_account NAME --slurm_partition NAME --slurm_log_dir DIR [options]"
-CLI_FLAGS=(--tissue --folds --plink_path --output_dir --matrixeqtl_bed_dir --gbat_bed_dir --transpco_bed_dir --exclude_crossmap --crossmap_dir --genotype_prefix --egret_subdir --fusion_models --bed_models --gemma_path --chunk_size --gene_info --expression --conda_env --slurm_account --slurm_partition --slurm_log_dir --bed_job_id_file --job_id_file --upstream_job_ids --cleanup_egret_plink --cleanup_egret_working --cleanup_egret_z_matrices --cleanup_bed_lists --cleanup_fold_expression)
-CLI_VARS=(tissue folds plink_path output_dir matrixeqtl_bed_dir gbat_bed_dir transpco_bed_dir exclude_crossmap crossmap_dir genotype_prefix egret_subdir fusion_models bed_models gemma_path chunk_size gene_info expression conda_env slurm_account slurm_partition slurm_log_dir bed_job_id_file job_id_file upstream_job_ids cleanup_egret_plink cleanup_egret_working cleanup_egret_z_matrices cleanup_bed_lists cleanup_fold_expression)
+USAGE="Usage: 6.0_train_EGRET_models.sh --tissue NAME --output_dir DIR --expression FILE --gene_info FILE --plink_path PATH --gemma_path PATH --bed_job_id_file FILE --job_id_file FILE --conda_env NAME --slurm_account NAME --slurm_partition NAME --slurm_log_dir DIR [options] [--cis_window_size BP]"
+CLI_FLAGS=(--tissue --folds --plink_path --output_dir --matrixeqtl_bed_dir --gbat_bed_dir --transpco_bed_dir --exclude_crossmap --crossmap_dir --genotype_prefix --egret_subdir --fusion_models --bed_models --gemma_path --chunk_size --gene_info --expression --conda_env --slurm_account --slurm_partition --slurm_log_dir --bed_job_id_file --job_id_file --upstream_job_ids --cleanup_egret_plink --cleanup_egret_working --cleanup_egret_z_matrices --cleanup_bed_lists --cleanup_fold_expression --cis_window_size)
+CLI_VARS=(tissue folds plink_path output_dir matrixeqtl_bed_dir gbat_bed_dir transpco_bed_dir exclude_crossmap crossmap_dir genotype_prefix egret_subdir fusion_models bed_models gemma_path chunk_size gene_info expression conda_env slurm_account slurm_partition slurm_log_dir bed_job_id_file job_id_file upstream_job_ids cleanup_egret_plink cleanup_egret_working cleanup_egret_z_matrices cleanup_bed_lists cleanup_fold_expression cis_window_size)
 CLI_REQUIRED=(tissue output_dir plink_path gemma_path gene_info expression conda_env slurm_account slurm_partition slurm_log_dir bed_job_id_file job_id_file)
 folds=5; matrixeqtl_bed_dir=results_FDR_0.1; gbat_bed_dir=results_FDR_0.1
 transpco_bed_dir=bed_files_FDR_0.1; exclude_crossmap=TRUE; crossmap_dir=background_mismatches
 genotype_prefix=GTEX_v8_genotypes_pruned; egret_subdir=EGRET; fusion_models=xtune,lasso,enet,blup
 bed_models=Cis,MatrixeQTL,GBAT,transPCO; chunk_size=500; upstream_job_ids=""
+cis_window_size=1000000
 cleanup_egret_plink=FALSE; cleanup_egret_working=FALSE; cleanup_egret_z_matrices=FALSE
 cleanup_bed_lists=FALSE; cleanup_fold_expression=FALSE
 parse_cli "$@"
@@ -38,7 +39,8 @@ for ((fold=0; fold<=folds; fold++)); do
         --crossmap_dir "$crossmap_dir" --genotype_prefix "$genotype_prefix" \
         --plink_path "$plink_path" --expression "$expression" --fold "$fold" \
         --gene_info "$gene_info" --bed_models "$bed_models" --conda_env "$conda_env" \
-        --cleanup_bed_lists "$cleanup_bed_lists" --cleanup_fold_expression "$cleanup_fold_expression")
+        --cleanup_bed_lists "$cleanup_bed_lists" --cleanup_fold_expression "$cleanup_fold_expression" \
+        --cis_window_size "$cis_window_size")
     [[ -n "$jid" ]] || cli_die "no job ID returned for bed fold $fold"
     bed_ids+=("$jid")
 done

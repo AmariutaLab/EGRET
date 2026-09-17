@@ -21,7 +21,9 @@ option_list = list(
   make_option("--FDR", action="store", default=NA, type='numeric',
               help="FDR to include gene pairs"),
   make_option("--output_dir", action="store",default=NA, type='character',
-              help="directory where results are stored")
+              help="directory where results are stored"),
+  make_option("--cis_window_size", action="store", default=1000000, type='numeric',
+              help="total width of the cis region in bp; halved to a +/- half-width around the TSS. Gene pairs closer than the half-width are cis and are skipped [default: 1000000]")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -66,7 +68,7 @@ for (fold in 0:opt$folds) {
 			trans_gene_chr = trans_gene_info$'#chrom'
 			trans_gene_start = trans_gene_info$chromStart
 
-			if (any((gene_chr == trans_gene_chr) & abs(gene_start - trans_gene_start) < 500000)) { next }
+			if (any((gene_chr == trans_gene_chr) & abs(gene_start - trans_gene_start) < floor(opt$cis_window_size/2))) { next }
 			
 			load(paste0(cis_model_dir,subset$SNP[row],".wgt.RDat"))
 			snps = snps$V2[wgt.matrix[,colnames(wgt.matrix) == "lasso"] != 0]

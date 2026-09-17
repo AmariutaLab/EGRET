@@ -21,7 +21,9 @@ option_list = list(
   make_option("--genotype_prefix", action="store",default=NA, type='character',
         	  help="prefix to access bim file within genotypes folder "),
   make_option("--output_dir", action="store",default=NA, type='character',
-              help="directory where results are stored")
+              help="directory where results are stored"),
+  make_option("--cis_window_size", action="store", default=1000000, type='numeric',
+              help="total width of the cis region in bp; halved to a +/- half-width around the TSS. SNPs inside it are cis and are excluded from the trans BEDs [default: 1000000]")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -51,8 +53,9 @@ for (fold in 0:opt$folds) {
 		largest_sig_pval = c(largest_sig_pval, subset$'p-value'[nrow(subset)])
 		gene_info = all_gene_info[match(current_gene,all_gene_info$geneId),]
 		chr = strsplit(gene_info$'#chrom','chr')[[1]][2]
-		u_bound = max(0,gene_info$chromStart - 500000)
-		l_bound = gene_info$chromStart + 500000
+		cis_half_window = floor(opt$cis_window_size/2)
+		u_bound = max(0,gene_info$chromStart - cis_half_window)
+		l_bound = gene_info$chromStart + cis_half_window
 		snp_info = all_snp_info[match(subset$SNP,all_snp_info$V2),]
 		cis_snps = which(snp_info$V1 == chr & snp_info$V4 > u_bound & snp_info$V4 < l_bound)
 		subset = subset[!cis_snps,]

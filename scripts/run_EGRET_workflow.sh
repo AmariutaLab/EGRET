@@ -35,6 +35,9 @@ parse_cli "$@"
 [[ -r "$config_file" ]] || cli_die "configuration file is not readable: $config_file"
 source "$config_file"
 grn_pval_threshold=${grn_pval_threshold:-0.01}
+# Optional, not in required_config: a config predating this key must keep working, and the
+# default reproduces the previous hardcoded TSS +/-500kb exactly.
+cis_window_size=${cis_window_size:-1000000}
 required_config=(genotype_prefix expression individuals covariates gene_info plink_path plink1_path
     gcta_path gemma_path tissue output_dir genotype_output_prefix egret_subdir folds ld_prune_r2 fdr chunk_size
     bed_models fusion_models matrixeqtl_bed_dir gbat_bed_dir transpco_bed_dir stages conda_env
@@ -202,7 +205,7 @@ if stage_enabled cis; then
         --gemma_path "$gemma_path" --chunk_size "$chunk_size" --conda_env "$conda_env" \
         --slurm_account "$slurm_account" --slurm_partition "$slurm_partition" \
         --slurm_log_dir "$run_log_dir" --job_id_file "$cis_file" \
-        --cleanup_cis_working "$cleanup_cis_working"
+        --cleanup_cis_working "$cleanup_cis_working" --cis_window_size "$cis_window_size"
     cis_ids=$(read_job_ids "$cis_file")
 else
     if any_stage_enabled gbat analysis twas_cis; then
@@ -219,7 +222,7 @@ if stage_enabled matrixeqtl; then
         --tissue "$tissue" --fdr "$fdr" --folds "$folds" --gene_info "$gene_info" \
         --genotype_prefix "$genotype_output_prefix" --output_dir "$output_dir" --conda_env "$conda_env" \
         --cleanup_matrixeqtl_raw "$cleanup_matrixeqtl_raw" \
-        --cleanup_fold_genotypes "$cleanup_fold_genotypes")
+        --cleanup_fold_genotypes "$cleanup_fold_genotypes" --cis_window_size "$cis_window_size")
     record_single_job "${job_id_dir}/matrixeqtl.jids" "$jid"; matrix_ids=$jid
 elif stage_enabled models && model_uses_source MatrixeQTL; then
     for ((fold=0; fold<=folds; fold++)); do
@@ -233,7 +236,8 @@ if stage_enabled gbat; then
         --tissue "$tissue" --fdr "$fdr" --folds "$folds" --gene_info "$gene_info" \
         --cis_model_dir "${output_dir}/FUSION/${tissue}/cis" --plink_path "$plink_path" \
         --genotype_prefix "$genotype_prefix" --output_dir "$output_dir" \
-        --cleanup_cis_plink "$cleanup_cis_plink" --conda_env "$conda_env")
+        --cleanup_cis_plink "$cleanup_cis_plink" --conda_env "$conda_env" \
+        --cis_window_size "$cis_window_size")
     record_single_job "${job_id_dir}/gbat.jids" "$jid"; gbat_ids=$jid
 elif stage_enabled models && model_uses_source GBAT; then
     for ((fold=0; fold<=folds; fold++)); do
@@ -278,6 +282,7 @@ if stage_enabled models; then
         --egret_subdir "$egret_subdir" --fusion_models "$fusion_models" \
         --bed_models "$bed_models" --gemma_path "$gemma_path" --chunk_size "$chunk_size" \
         --gene_info "$gene_info" --expression "${output_dir}/expression_files/${tissue}_expression_regressed.txt.gz" \
+        --cis_window_size "$cis_window_size" \
         --conda_env "$conda_env" --slurm_account "$slurm_account" \
         --slurm_partition "$slurm_partition" --slurm_log_dir "$run_log_dir" \
         --bed_job_id_file "${job_id_dir}/beds.jids" --job_id_file "$model_file" \
