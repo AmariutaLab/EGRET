@@ -130,7 +130,8 @@ matched_bed = function(ids) {
 	idx = idx[idx > 0L]
 	if (length(idx) == 0) return(matrix(ncol=6, nrow=0))
 	hits = allsnps[idx]
-	cbind(hits$V1, hits$V4, hits$V4 + 1, hits$V2, "0", "+")
+	# 1L keeps the end integer; a double end like 121000000 prints as "1.21e+08" and breaks PLINK.
+	cbind(hits$V1, hits$V4, hits$V4 + 1L, hits$V2, "0", "+")
 }
 
 for (gene in genes) {
@@ -158,8 +159,8 @@ for (gene in genes) {
 		}
 	}
 	if (is.null(cis_bed)) {
-		bounds_u = max(1, tss - floor(opt$cis_window_size/2))
-		bounds_l = tss + floor(opt$cis_window_size/2)
+		bounds_u = as.integer(max(1, tss - floor(opt$cis_window_size/2)))
+		bounds_l = as.integer(tss + floor(opt$cis_window_size/2))
 		bed = c(chr, bounds_u, bounds_l, gene_name, 0, "+")
 		cis_bed = matrix(bed, nrow = 1, ncol = 6)
 	}
