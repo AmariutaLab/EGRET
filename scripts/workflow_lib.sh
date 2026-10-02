@@ -139,15 +139,50 @@ count_files() {
     echo "$n"
 }
 
+# Print an afterok ID list without the parents SLURM has already forgotten. sbatch rejects
+# an afterok on a job purged from memory (MinJobAge after it ends) with "Job dependency
+# problem", which happens when a driver spends longer than that between submitting a
+# parent and its dependent. A purged parent that COMPLETED is satisfied and is dropped;
+# any other end state fails, because afterok would never have released the dependent.
+prune_finished_dependencies() {
+    local ids=$1 id state queued kept=()
+    queued=$(squeue -h -u "$USER" -o %i 2>/dev/null) || return 1
+    for id in ${ids//:/ }; do
+        if grep -qx "$id" <<<"$queued"; then
+            kept+=("$id")
+            continue
+        fi
+        state=$(sacct -n -X -j "$id" -o State 2>/dev/null | head -1 | tr -d '[:space:]')
+        if [[ "$state" != COMPLETED ]]; then
+            echo "ERROR: dependency $id is no longer queued and ended ${state:-in an unknown state}" >&2
+            return 1
+        fi
+    done
+    join_by_colon "${kept[@]}"
+}
+
 # sbatch with retries. A busy scheduler intermittently rejects a submission outright even
 # with nodes free ("Required partition not available"); under set -e one such rejection
 # ends the driver mid-dispatch and orphans every job downstream of it.
 submit_with_retry() {
-    local attempt=1 max=3 delay=10 out=""
+    local attempt=1 max=3 delay=10 out="" arg ids
+    local args=("$@")
     while true; do
-        if out=$(sbatch "$@" 2>&1); then
+        if out=$(sbatch "${args[@]}" 2>&1); then
             printf '%s\n' "$out"
             return 0
+        fi
+        if [[ "$out" == *"Job dependency problem"* ]]; then
+            local pruned=()
+            for arg in "${args[@]}"; do
+                if [[ "$arg" == --dependency=afterok:* ]]; then
+                    ids=$(prune_finished_dependencies "${arg#--dependency=afterok:}") || return 1
+                    [[ -z "$ids" ]] || pruned+=("--dependency=afterok:${ids}")
+                else
+                    pruned+=("$arg")
+                fi
+            done
+            args=("${pruned[@]}")
         fi
         if (( attempt >= max )); then
             echo "ERROR: sbatch failed after ${max} attempts: $out" >&2
