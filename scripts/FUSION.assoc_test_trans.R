@@ -196,21 +196,17 @@ for ( w in 1:nrow(wgtlist) ) {
 	if ( !is.na(opt$force_model) ) {
 		mod.best = which( colnames(wgt.matrix) == opt$force_model )
 		if ( length(mod.best) == 0 ) {
-			cat( "WARNING : --force_model" , mod.best ,"does not exist for", unlist(wgtlist[w,]) , "\n")
+			cat( "WARNING : --force_model" , opt$force_model ,"does not exist for", unlist(wgtlist[w,]) , "\n")
 			cur.FAIL = TRUE
-		}	
-	} 
-	
-	#else {
-	#	# get the most significant model
-	#	mod.best = which.min(apply(cv.performance[row.pval,,drop=F],2,min,na.rm=T))
-	#}
-
-	# added this section so that it will select the best model by R2 if there are no p-values for the model	
-	if ( length(row.pval) == 0 ) {
+		}
+	} else if ( length(row.pval) == 0 ) {
+		# The automatic selection must sit in the else chain: run unconditionally, it
+		# overwrote --force_model with the best-CV model.
+		# added this section so that it will select the best model by R2 if there are no p-values for the model
 		mod.best = which.max(
         	apply(cv.performance[row.rsq,,drop=FALSE], 2, mean, na.rm = TRUE))
 	} else {
+		# get the most significant model
     		mod.best = which.min(
         	apply(cv.performance[row.pval,,drop=FALSE], 2, min, na.rm = TRUE))
 	}
