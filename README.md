@@ -176,6 +176,15 @@ sbatch --account=my_account --partition=my_partition scripts/run_EGRET_workflow.
 
 The default configuration runs every stage except `grn`. Job IDs are recorded under `output_dir/.job_ids/<run-id>/`, and child-job logs go to `slurm_log_dir/<run-id>/`.
 
+To run another tissue or output directory without editing `config.sh`:
+
+```bash
+EGRET_TISSUE=Liver EGRET_OUTPUT_DIR=/absolute/output/Liver \
+  sbatch --account=my_account --partition=my_partition scripts/run_EGRET_workflow.sh
+```
+
+`expression`, `individuals`, `covariates` and `eqtl_file` are built from the tissue name, so files for that tissue must exist at the configured paths.
+
 The stages are:
 
 | Order | Stage name | What it does |
