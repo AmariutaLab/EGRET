@@ -15,15 +15,18 @@
 _scripts_dir="${EGRET_SCRIPTS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 _repo_dir="$(cd "${_scripts_dir}/.." && pwd)"
 
+# Tissue. EGRET_TISSUE overrides it for multi-tissue sweeps.
+tissue="${EGRET_TISSUE:-Whole_Blood}"
+
 # Input data
 genotype_prefix="/expanse/lustre/projects/ddp412/tamariutabartell/gtex/GTEx_v8_genotype_EUR_HM3_exclude_dups.allchr.reorder"
-expression="/expanse/lustre/projects/ddp412/tamariutabartell/gtex/Whole_Blood.v8.normalized_expression.bed.gz"
-individuals="/expanse/lustre/projects/ddp412/kbrunton/TWAS_across_tissues/individuals_per_tissue/Whole_Blood_individuals.txt"
-covariates="/expanse/lustre/projects/ddp412/tamariutabartell/o2_files/gtex_covars/Covar_all_Whole_Blood.txt"
+expression="/expanse/lustre/projects/ddp412/tamariutabartell/gtex/${tissue}.v8.normalized_expression.bed.gz"
+individuals="/expanse/lustre/projects/ddp412/kbrunton/TWAS_across_tissues/individuals_per_tissue/${tissue}_individuals.txt"
+covariates="/expanse/lustre/projects/ddp412/tamariutabartell/o2_files/gtex_covars/Covar_all_${tissue}.txt"
 gene_info="/expanse/lustre/projects/ddp412/kbrunton/data/GTEx_V8.txt.gz"
 # GRN eQTL sumstats. Must be the *_with_rsid.txt variant, not the stock GTEx file: 9.3
 # joins on an `rsid` column that only convert_variant_id_to_rsid.py adds.
-eqtl_file="/expanse/lustre/projects/ddp412/kbrunton/EGRET/grn_analysis_files/GTEx_Analysis_v8_eQTL/Whole_Blood_with_rsid.txt"
+eqtl_file="${_repo_dir}/grn_analysis_files/GTEx_Analysis_v8_eQTL/${tissue}_with_rsid.txt"
 # A target gene enters the GRN graph when its trans partition clears this p-value.
 # Distinct from `fdr`, which governs trans-eQTL SNP selection upstream.
 grn_pval_threshold="0.01"
@@ -35,11 +38,10 @@ plink1_path="/expanse/lustre/projects/ddp412/kbrunton/plink"
 gcta_path="${_scripts_dir}/gcta_nr_robust"                     # bundled in the repo
 gemma_path="${_scripts_dir}/gemma-0.98.5-linux-static-AMD64"   # bundled in the repo
 
-# Tissue, models, and output layout
-tissue="Whole_Blood"
+# Models and output layout
 # Must be absolute: a relative path resolves against the submitting CWD, so the same
 # config would write to a different tree depending on where sbatch was run from.
-output_dir="${_scripts_dir}/test_output"
+output_dir="${EGRET_OUTPUT_DIR:-${_scripts_dir}/test_output}"
 genotype_output_prefix="GTEX_v8_genotypes_pruned"
 egret_subdir="EGRET"
 folds="5"
