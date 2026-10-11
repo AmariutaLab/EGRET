@@ -334,9 +334,9 @@ assert_grep 'MatrixeQTL files=3 listed_snps=2 matched_snps=0 contributing_genes=
 pco="$test_root/pco"; mkdir -p "$pco/transPCO/T/fold_0/modules" \
     "$pco/transPCO/T/fold_1/modules" "$pco/transPCO/T/fold_0/PCO_association_results" \
     "$pco/transPCO/T/fold_1/PCO_association_results"
-printf 'g1\n' > "$pco/transPCO/T/fold_0/modules/module_1.txt"
-printf 'g2\n' > "$pco/transPCO/T/fold_0/modules/module_2.txt"
-printf 'g1\n' > "$pco/transPCO/T/fold_1/modules/module_1.txt"
+printf 'g1\ng3\n' > "$pco/transPCO/T/fold_0/modules/module_1.txt"
+printf 'g2\ng4\n' > "$pco/transPCO/T/fold_0/modules/module_2.txt"
+printf 'g1\ng3\n' > "$pco/transPCO/T/fold_1/modules/module_1.txt"
 printf 'result\n' > "$pco/transPCO/T/fold_0/PCO_association_results/module_1_chr_1.txt.gz"
 printf 'result\n' > "$pco/transPCO/T/fold_1/PCO_association_results/module_1_chr_1.txt.gz"
 if PATH="$test_root/bin:$PATH" "$scripts_dir/5.7_run_results_analysis_job.sh" \
