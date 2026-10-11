@@ -21,8 +21,8 @@ parser.add_argument('--output_dir', required=True, help='base output directory')
 # of the dendrogram, not the identity of the run. Override when exploring granularity.
 parser.add_argument('--distance_threshold', type=float, default=0.9,
                     help='fcluster cophenetic-distance cutoff (default: 0.9)')
-parser.add_argument('--min_cluster_size', type=int, default=3,
-                    help='minimum target genes for a cluster to be reported (default: 3)')
+parser.add_argument('--min_cluster_size', type=int, default=4,
+                    help='minimum target genes for a cluster to be reported (default: 4)')
 parser.add_argument('--min_regulator_targets', type=int, default=2,
                     help='minimum targets for a regulator to be reported (default: 2)')
 args = parser.parse_args()

@@ -88,7 +88,7 @@ G2	rs2	R1	R1
 G3	rs3	R1	R1
 EDGES
 "$python_bin" "$repo_dir/grn_analysis_files/9.4_determine_grns.py" \
-    --tissue T --output_dir "$test_root/out"
+    --tissue T --output_dir "$test_root/out" --min_cluster_size 3
 module_file=$(find "$test_root/out/grn_analysis/coregulation_grns/T" \
     -maxdepth 1 -name 'coregulation_cluster_*.txt' -print -quit)
 [[ -n "$module_file" ]] || fail "three-target network did not produce a module"
