@@ -20,7 +20,9 @@ option_list = list(
                 help="Path to plink"),
         make_option("--output_dir", action="store", default=NA, type='character',
                 help="Base output directory for the pipeline"),
-        make_option("--genotype_prefix", action="store", default=NA, type='character', help="Basename of LD-pruned plink genotype files in output_dir/genotype_files/")
+        make_option("--genotype_prefix", action="store", default=NA, type='character', help="Basename of LD-pruned plink genotype files in output_dir/genotype_files/"),
+        make_option("--gene_list", action="store", default=NA, type='character',
+                help="Optional file of gene IDs, one per line; only these genes get cis windows [default: all expressed genes]")
   )
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -34,6 +36,7 @@ all_gene_info = fread(opt$gene_info, header = T)
 expression = fread(file.path(opt$output_dir, "expression_files", paste0(opt$tissue, "_expression.txt.gz")), header = T)
 
 genes = unlist(expression$gene_id)
+if (!is.na(opt$gene_list)) genes = intersect(genes, readLines(opt$gene_list))
 
 bfile = file.path(opt$output_dir, "genotype_files", opt$genotype_prefix)
 bed_dir = file.path(opt$output_dir, "bed_files", opt$tissue, "cis")

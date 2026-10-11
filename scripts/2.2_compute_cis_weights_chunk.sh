@@ -25,10 +25,10 @@ scripts_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
 export EGRET_SCRIPTS_DIR="$scripts_dir"
 source "${scripts_dir}/workflow_lib.sh"
 USAGE="Usage: 2.2_compute_cis_weights_chunk.sh --tissue NAME --output_dir DIR --chunk_size N --start_index N --plink_path PATH --individuals FILE --covariates FILE --plink1_path PATH --gcta_path PATH --gemma_path PATH --conda_env NAME [options]"
-CLI_FLAGS=(--tissue --output_dir --chunk_size --start_index --plink_path --individuals --covariates --plink1_path --gcta_path --gemma_path --conda_env --cleanup_cis_working)
-CLI_VARS=(tissue output_dir chunk_size start_index plink_path individuals covariates plink1_path gcta_path gemma_path conda_env cleanup_cis_working)
+CLI_FLAGS=(--tissue --output_dir --chunk_size --start_index --plink_path --individuals --covariates --plink1_path --gcta_path --gemma_path --conda_env --cleanup_cis_working --hsq_set)
+CLI_VARS=(tissue output_dir chunk_size start_index plink_path individuals covariates plink1_path gcta_path gemma_path conda_env cleanup_cis_working hsq_set)
 CLI_REQUIRED=(tissue output_dir chunk_size start_index plink_path individuals covariates plink1_path gcta_path gemma_path conda_env)
-cleanup_cis_working=FALSE
+cleanup_cis_working=FALSE; hsq_set=""
 parse_cli "$@"; activate_workflow_env "$conda_env"
 wd="${output_dir}/working/${tissue}/cis"; tmpdir="${output_dir}/tmp/${tissue}/cis"; weights="${output_dir}/FUSION/${tissue}/cis"
 mkdir -p "$wd" "$tmpdir" "$weights"
@@ -97,9 +97,12 @@ for gene_file in "${genes[@]}"; do
         continue
     fi
     # Guarded: under `set -e` one gene's failure would abort the chunk and drop the rest.
+    # --hsq_set skips GCTA and fixes h2 (used only as the lasso penalty), so genes whose
+    # REML fails to converge or goes negative still get a model.
     if ! Rscript "${scripts_dir}/FUSION.compute_weights.R" --genotype_prefix "${wd}/${gene}" --crossval 5 \
         --fusion_models lasso,blup,enet,top1 --hsq_p 1 --tmp "${tmpdir}/${gene}" --out "${weights}/${gene}" \
-        --covariates "$covariates" --gcta_path "$gcta_path" --plink_path "$plink1_path" --gemma_path "$gemma_path"; then
+        --covariates "$covariates" --gcta_path "$gcta_path" --plink_path "$plink1_path" --gemma_path "$gemma_path" \
+        ${hsq_set:+--hsq_set "$hsq_set"}; then
         echo "WARNING: FUSION.compute_weights.R failed for ${gene}; continuing" >&2
         failed=$((failed + 1))
     fi
